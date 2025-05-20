@@ -172,3 +172,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# env files
+.env
+
+# NICEGUI
+.nicegui
