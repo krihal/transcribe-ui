@@ -8,7 +8,7 @@ from utils.oidc import get_userinfo, get_auth_header
 
 settings = get_settings()
 API_URL = settings.API_URL
-STATIC_FILES = settings.STATIC_FILES
+STATIC_FILES = settings.API_STATIC_FILES
 
 jobs_columns = [
     {

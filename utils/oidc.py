@@ -7,17 +7,17 @@ settings = get_settings()
 session_storage = SessionHandler(mode="redis", namespace=__name__)
 auth_config = Config(
     authorization_endpoint=None,
-    client_id=settings.CLIENT_ID,
-    client_secret=settings.CLIENT_SECRET,
-    cookie_secret_key=settings.COOKIE_SECRET_KEY,
-    well_known_openid_url=settings.WELL_KNOWN_OPENID_URL,
-    redirect_uri=settings.REDIRECT_URI,
-    app_login_route=settings.APP_LOGIN_ROUTE,
-    app_logout_route=settings.APP_LOGOUT_ROUTE,
-    app_authorize_route=settings.APP_AUTHORIZE_ROUTE,
-    unrestricted_routes=settings.UNRESTRICTED_ROUTES,
-    post_logout_uri=settings.POST_LOGOUT_URI,
-    scope=settings.SCOPE,
+    client_id=settings.OIDC_CLIENT_ID,
+    client_secret=settings.OIDC_CLIENT_SECRET,
+    cookie_secret_key=settings.OIDC_COOKIE_SECRET_KEY,
+    well_known_openid_url=settings.OIDC_METADATA_URL,
+    redirect_uri=settings.OIDC_REDIRECT_URI,
+    app_login_route=settings.OIDC_APP_LOGIN_ROUTE,
+    app_logout_route=settings.OIDC_APP_LOGOUT_ROUTE,
+    app_authorize_route=settings.OIDC_APP_AUTHORIZE_ROUTE,
+    unrestricted_routes=settings.OIDC_UNRESTRICTED_ROUTES,
+    post_logout_uri=settings.OIDC_POST_LOGOUT_URI,
+    scope=settings.OIDC_SCOPE,
 )
 
 auth = NiceGUIOIDClient(app, auth_config=auth_config, session_storage=session_storage)
