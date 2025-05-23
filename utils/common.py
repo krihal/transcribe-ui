@@ -6,7 +6,6 @@ from nicegui import ui, app
 from typing import Optional
 from utils.settings import get_settings
 import time
-from datetime import datetime, timedelta
 
 settings = get_settings()
 API_URL = settings.API_URL
