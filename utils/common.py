@@ -1,10 +1,12 @@
+import jwt
 import asyncio
 import requests
 
-from nicegui import ui
+from nicegui import ui, app
 from typing import Optional
 from utils.settings import get_settings
-from utils.oidc import get_userinfo, get_auth_header
+import time
+from datetime import datetime, timedelta
 
 settings = get_settings()
 API_URL = settings.API_URL
@@ -44,12 +46,65 @@ jobs_columns = [
     },
 ]
 
+def token_refresh() -> None:
+    """
+    Refresh the token using the refresh token.
+    """
+
+    auth_token = app.storage.user.get("token")
+    refresh_token = app.storage.user.get("refresh_token")
+
+    try:
+        # Get the expiration time from the JWT
+        jwt_instance = jwt.JWT()        
+        jwt_decoded = jwt_instance.decode(auth_token, do_verify=False)
+    except jwt.exceptions.JWTDecodeError:
+        # Force the user to log out if the token is invalid
+        ui.navigate.to(f"{API_URL}/auth/logout")
+        return
+
+    # Only refresh if the token is about to expire
+    # within 20 seconds.
+    if jwt_decoded["exp"] - int(time.time()) > 20:
+        return
+
+    try:
+        # Make a request to refresh the token
+        response = requests.post(
+            f"{API_URL}/auth/refresh",
+            json={"token": refresh_token},
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        ui.navigate.to(f"{API_URL}/auth/logout")
+        return
+
+    token = response.json().get("access_token")
+    app.storage.user["token"] = token
+
+def get_auth_header():
+    """
+    Get the authorization header for API requests.
+    """
+
+    token = app.storage.user.get("token")
+
+    try:
+        jwt_instance = jwt.JWT()
+        jwt_instance.decode(token, do_verify=False)
+    except jwt.exceptions.JWTDecodeError:
+        # Fetch a new token if we for some reason have an invalid token
+        ui.navigate.to(f"{API_URL}/auth/logout")
+        return {}
+
+    return {"Authorization": f"Bearer {token}"}
+
 
 def show_userinfo() -> None:
     """
     Show a dialog with user information and a logout button.
     """
-    userinfo = get_userinfo()
+    userinfo = {}
 
     if "eduPersonPrincipalName" in userinfo:
         username = userinfo["eduPersonPrincipalName"]
@@ -86,6 +141,8 @@ def page_init(header_text: Optional[str] = "") -> None:
     """
     Initialize the page with a header and background color.
     """
+
+    ui.timer(10, token_refresh)
     ui.add_head_html("<style>body {background-color: #ffffff;}</style>")
 
     if header_text:
@@ -337,16 +394,15 @@ def start_transcription(
             uuid = row["uuid"]
 
             try:
-                auth_header = get_auth_header()
                 response = requests.put(
                     f"{API_URL}/api/v1/transcriber/{uuid}",
-                    headers={"Content-Type": "application/json", "Authorization": auth_header["Authorization"]},
                     json={
                         "language": f"{selected_language}",
                         "model": f"{selected_model}",
                         "output_format": f"{output_format}",
                         "status": "pending",
                     },
+                    headers=get_auth_header(),
                 )
                 response.raise_for_status()
             except requests.exceptions.RequestException as e:

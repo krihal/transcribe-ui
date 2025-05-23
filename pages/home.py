@@ -7,9 +7,6 @@ from utils.common import (
     table_transcribe,
     table_upload,
 )
-from utils.oidc import get_auth, validate_authentication
-
-auth = get_auth()
 
 
 @ui.refreshable
@@ -86,8 +83,6 @@ def create() -> None:
         Main page of the application.
         """
         global rows
-
-        validate_authentication()
 
         rows = jobs_get()
         page_init()

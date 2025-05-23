@@ -1,7 +1,6 @@
 import requests
 from nicegui import ui
-from utils.common import page_init, API_URL
-from utils.oidc import get_auth_header
+from utils.common import page_init, API_URL, get_auth_header
 
 # Set up global state
 expanded_row = None  # Track which row is currently expanded
