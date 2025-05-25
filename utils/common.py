@@ -70,12 +70,12 @@ def token_refresh() -> None:
     try:
         # Make a request to refresh the token
         response = requests.post(
-            f"{API_URL}/auth/refresh",
+            f"{API_URL}/api/refresh",
             json={"token": refresh_token},
         )
         response.raise_for_status()
     except requests.exceptions.RequestException:
-        ui.navigate.to(f"{API_URL}/auth/logout")
+        ui.navigate.to(f"{API_URL}/api/logout")
         return
 
     token = response.json().get("access_token")
