@@ -37,6 +37,12 @@ jobs_columns = [
         "align": "left",
     },
     {
+        "name": "model_format",
+        "label": "Model",
+        "field": "model_format",
+        "align": "left",
+    },
+    {
         "name": "language",
         "label": "Language",
         "field": "language",
@@ -138,6 +144,7 @@ def jobs_get() -> list:
             "format": output_format.capitalize(),
             "language": job["language"].capitalize(),
             "status": job["status"].capitalize(),
+            "model_type": job["model_type"].capitalize(),
         }
 
         jobs.append(job_data)
