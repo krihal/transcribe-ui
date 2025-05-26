@@ -59,7 +59,7 @@ def token_refresh() -> None:
         jwt_decoded = jwt_instance.decode(auth_token, do_verify=False)
     except jwt.exceptions.JWTDecodeError:
         # Force the user to log out if the token is invalid
-        ui.navigate.to(f"{API_URL}/auth/logout")
+        ui.navigate.to(f"{API_URL}/api/logout")
         return
 
     # Only refresh if the token is about to expire
@@ -130,7 +130,7 @@ def show_userinfo() -> None:
             ui.button(
                 "Logout",
                 icon="logout",
-                on_click=lambda: ui.navigate.to("/logout"),
+                on_click=lambda: (ui.navigate.to(f"{API_URL}/auth/logout")
             ).props("color=primary").style("margin-left: 10px;")
 
     dialog.open()
