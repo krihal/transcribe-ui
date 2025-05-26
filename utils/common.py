@@ -130,7 +130,7 @@ def show_userinfo() -> None:
             ui.button(
                 "Logout",
                 icon="logout",
-                on_click=lambda: (ui.navigate.to(f"{API_URL}/auth/logout")
+                on_click=lambda: (ui.navigate.to(f"{API_URL}/auth/logout"))
             ).props("color=primary").style("margin-left: 10px;")
 
     dialog.open()
