@@ -1,11 +1,10 @@
-import jwt
 import asyncio
 import requests
 
-from nicegui import ui, app
+from nicegui import ui
 from typing import Optional
 from utils.settings import get_settings
-import time
+from utils.token import token_refresh, get_auth_header, get_user_info
 
 settings = get_settings()
 API_URL = settings.API_URL
@@ -38,6 +37,12 @@ jobs_columns = [
         "align": "left",
     },
     {
+        "name": "language",
+        "label": "Language",
+        "field": "language",
+        "align": "left",
+    },
+    {
         "name": "status",
         "label": "Status",
         "field": "status",
@@ -45,92 +50,25 @@ jobs_columns = [
     },
 ]
 
-def token_refresh() -> None:
-    """
-    Refresh the token using the refresh token.
-    """
-
-    auth_token = app.storage.user.get("token")
-    refresh_token = app.storage.user.get("refresh_token")
-
-    try:
-        # Get the expiration time from the JWT
-        jwt_instance = jwt.JWT()        
-        jwt_decoded = jwt_instance.decode(auth_token, do_verify=False)
-    except jwt.exceptions.JWTDecodeError:
-        # Force the user to log out if the token is invalid
-        ui.navigate.to(f"{API_URL}/api/logout")
-        return
-
-    # Only refresh if the token is about to expire
-    # within 20 seconds.
-    if jwt_decoded["exp"] - int(time.time()) > 20:
-        return
-
-    try:
-        # Make a request to refresh the token
-        response = requests.post(
-            f"{API_URL}/api/refresh",
-            json={"token": refresh_token},
-        )
-        response.raise_for_status()
-    except requests.exceptions.RequestException:
-        ui.navigate.to(f"{API_URL}/api/logout")
-        return
-
-    token = response.json().get("access_token")
-    app.storage.user["token"] = token
-
-def get_auth_header():
-    """
-    Get the authorization header for API requests.
-    """
-
-    token = app.storage.user.get("token")
-
-    try:
-        jwt_instance = jwt.JWT()
-        jwt_instance.decode(token, do_verify=False)
-    except jwt.exceptions.JWTDecodeError:
-        # Fetch a new token if we for some reason have an invalid token
-        ui.navigate.to(f"{API_URL}/auth/logout")
-        return {}
-
-    return {"Authorization": f"Bearer {token}"}
-
 
 def show_userinfo() -> None:
     """
     Show a dialog with user information and a logout button.
     """
-    userinfo = {}
-
-    if "eduPersonPrincipalName" in userinfo:
-        username = userinfo["eduPersonPrincipalName"]
-    elif "preferred_username" in userinfo:
-        username = userinfo["preferred_username"]
-    elif "username" in userinfo:
-        username = userinfo["username"]
-    else:
-        username = "Unknown"
-
     with ui.dialog() as dialog:
-        with ui.card().style(
-            "width: 50%; align-self: center; margin-top: 10%;"
-        ):
+        with ui.card().style("width: 50%; align-self: center; margin-top: 10%;"):
             ui.label("User Information").classes("text-h5")
             ui.separator()
 
             with ui.row().style("align-items: center; justify-content: center;"):
                 with ui.column().classes("col-12 col-sm-6"):
-                    ui.label(f"Username: {username}")
-                    ui.label(f"Email: {userinfo["email"]}")
+                    ui.label(f"Username: {get_user_info()}")
 
             ui.separator()
             ui.button(
                 "Logout",
                 icon="logout",
-                on_click=lambda: (ui.navigate.to(f"{API_URL}/auth/logout"))
+                on_click=lambda: (ui.navigate.to(f"{API_URL}/api/logout")),
             ).props("color=primary").style("margin-left: 10px;")
 
     dialog.open()
@@ -174,7 +112,9 @@ def jobs_get() -> list:
     jobs = []
 
     try:
-        response = requests.get(f"{API_URL}/api/v1/transcriber", headers=get_auth_header())
+        response = requests.get(
+            f"{API_URL}/api/v1/transcriber", headers=get_auth_header()
+        )
         response.raise_for_status()
     except requests.exceptions.RequestException:
         ui.notify("Error: Can not connect to backend.", type="negative", position="top")
@@ -195,8 +135,9 @@ def jobs_get() -> list:
             "filename": job["filename"],
             "created_at": job["created_at"],
             "updated_at": job["updated_at"],
+            "format": output_format.capitalize(),
+            "language": job["language"].capitalize(),
             "status": job["status"].capitalize(),
-            "format": output_format,
         }
 
         jobs.append(job_data)
@@ -240,10 +181,14 @@ def post_file(file: str, filename: str) -> None:
     files_json = {"file": (filename, file.read())}
 
     try:
-        response = requests.post(f"{API_URL}/api/v1/transcriber", files=files_json, headers=get_auth_header())
+        response = requests.post(
+            f"{API_URL}/api/v1/transcriber", files=files_json, headers=get_auth_header()
+        )
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
-        ui.notify(f"Error when uploading file: {str(e)}", type="negative", position="top")
+        ui.notify(
+            f"Error when uploading file: {str(e)}", type="negative", position="top"
+        )
         return
 
     return True
@@ -283,9 +228,7 @@ def table_upload(table) -> None:
                 "Done",
                 icon="check_circle",
                 on_click=lambda: dialog.close(),
-            ).props("color=primary").style(
-                "margin-left: 10px; margin-bottom: 10px;"
-            )
+            ).props("color=primary").style("margin-left: 10px; margin-bottom: 10px;")
 
         dialog.open()
 
