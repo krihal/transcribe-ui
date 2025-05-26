@@ -79,6 +79,6 @@ def create() -> None:
             """
             Update the rows in the table.
             """
-            table.update_rows(jobs_get(), clear_selection=True)
+            table.update_rows(jobs_get(), clear_selection=False)
 
         ui.timer(5.0, lambda: update_rows())
