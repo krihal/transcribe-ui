@@ -37,9 +37,9 @@ jobs_columns = [
         "align": "left",
     },
     {
-        "name": "model_format",
+        "name": "model_type",
         "label": "Model",
-        "field": "model_format",
+        "field": "model_type",
         "align": "left",
     },
     {
