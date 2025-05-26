@@ -1,4 +1,4 @@
-from nicegui import ui
+from nicegui import ui, app
 from utils.common import (
     page_init,
     jobs_get,
@@ -9,19 +9,22 @@ from utils.common import (
 )
 
 
-@ui.refreshable
-def create_table_jobs() -> None:
-    """
-    Create a table to display the transcription jobs.
-    """
-    global rows
+def create() -> None:
+    @ui.refreshable
+    @ui.page("/home")
+    def home() -> None:
+        """
+        Main page of the application.
+        """
+        page_init()
 
-    with ui.table(
-        columns=jobs_columns,
-        rows=rows,
-        selection="multiple",
-        pagination=10,
-    ) as table:
+        table = ui.table(
+            columns=jobs_columns,
+            rows=jobs_get(),
+            selection="multiple",
+            pagination=10,
+        )
+
         table.style("width: 100%; height: calc(100vh - 130px); box-shadow: none;")
         table.on("rowClick", table_click)
         table.classes("text-h2")
@@ -72,29 +75,10 @@ def create_table_jobs() -> None:
                     )
                     ui.icon("play_circle_filled")
 
+        def update_rows():
+            """
+            Update the rows in the table.
+            """
+            table.update_rows(jobs_get(), clear_selection=True)
 
-rows = []
-
-
-def create() -> None:
-    @ui.page("/home")
-    def home() -> None:
-        """
-        Main page of the application.
-        """
-        global rows
-
-        rows = jobs_get()
-        page_init()
-        create_table_jobs()
-
-        def update_table():
-            global rows
-
-            new_rows = jobs_get()
-
-            if new_rows != rows:
-                rows = new_rows
-                create_table_jobs.refresh()
-
-        ui.timer(5.0, update_table)
+        ui.timer(5.0, lambda: update_rows())
