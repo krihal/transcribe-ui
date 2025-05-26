@@ -278,6 +278,14 @@ def table_upload(table) -> None:
             ).style(
                 "width: 100%; align-self: center; border-radius: 10px; height: 100%;"
             )
+            ui.separator()
+            ui.button(
+                "Done",
+                icon="check_circle",
+                on_click=lambda: dialog.close(),
+            ).props("color=primary").style(
+                "margin-left: 10px; margin-bottom: 10px;"
+            )
 
         dialog.open()
 
