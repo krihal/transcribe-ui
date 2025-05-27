@@ -1,7 +1,7 @@
 import asyncio
 import requests
 
-from nicegui import ui
+from nicegui import ui, app
 from typing import Optional
 from utils.settings import get_settings
 from utils.token import token_refresh, get_auth_header, get_user_info
@@ -57,6 +57,15 @@ jobs_columns = [
 ]
 
 
+def logout() -> None:
+    """
+    Log out the user by clearing the token and navigating to the logout endpoint.
+    """
+
+    app.storage.user.clear()
+    ui.navigate.to(f"{API_URL}/api/logout")
+
+
 def show_userinfo() -> None:
     """
     Show a dialog with user information and a logout button.
@@ -74,8 +83,10 @@ def show_userinfo() -> None:
             ui.button(
                 "Logout",
                 icon="logout",
-                on_click=lambda: (ui.navigate.to(f"{API_URL}/api/logout")),
-            ).props("color=primary").style("margin-left: 10px;")
+                on_click=lambda: logout(),
+            ).props(
+                "color=primary"
+            ).style("margin-left: 10px;")
 
     dialog.open()
 
