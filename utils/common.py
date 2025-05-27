@@ -296,7 +296,7 @@ def table_transcribe(table) -> None:
                 with ui.column().classes("col-12 col-sm-24"):
                     ui.label("Output format").classes("text-subtitle2 q-mb-sm")
                     output_format = ui.select(
-                        ["SRT", "TXT"],
+                        ["SRT"],
                         label="Select output format",
                     ).classes("w-full")
             ui.separator()
