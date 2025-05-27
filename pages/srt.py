@@ -368,7 +368,7 @@ class SRTEditor:
     def create_search_panel(self) -> None:
         """Create the search panel UI"""
         with ui.expansion("Search & Replace").classes("w-full").style(
-            "color: #4a90e2;"
+            "background-color: #eff4fb;"
         ):
             with ui.row().classes("w-full gap-2 mb-2"):
                 search_input = (
