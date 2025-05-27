@@ -34,7 +34,7 @@ def index(request: Request) -> None:
             "margin: auto;"
         )
         ui.image("static/sunet_logo.svg").style(
-            "width: 200px; height: auto; margin: auto; magin-top: auto;"
+            "width: 25%; height: auto; margin: auto; magin-top: auto;"
         )
         ui.button(
             "Login with SSO",
