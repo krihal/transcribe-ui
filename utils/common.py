@@ -175,13 +175,17 @@ def table_click(event) -> None:
     uuid = event.args[1]["uuid"]
     filename = event.args[1]["filename"]
     output_format = event.args[1]["format"]
+    model_type = event.args[1]["model_type"]
+    language = event.args[1]["language"]
 
     if status != "completed":
         return
 
     match output_format.lower():
         case "srt":
-            ui.navigate.to(f"/srt?uuid={uuid}&filename={filename}")
+            ui.navigate.to(
+                f"/srt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
+            )
         case "txt":
             ui.navigate.to(f"/txt?uuid={uuid}&filename={filename}")
         case _:

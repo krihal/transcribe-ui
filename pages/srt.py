@@ -426,6 +426,28 @@ class SRTEditor:
                 "keydown.enter", lambda: self.search_captions(search_input.value)
             )
 
+    def get_caption_from_time(self, caption_time: float) -> Optional[SRTCaption]:
+        """Get caption at a specific time"""
+        for caption in self.captions:
+            if caption.get_start_seconds() <= caption_time <= caption.get_end_seconds():
+                return caption
+
+        return None
+
+    async def select_caption_from_video(self, autoscroll: bool) -> None:
+        if not autoscroll:
+            return
+
+        current_time = await ui.run_javascript(
+            """(() => { return document.querySelector("video").currentTime })()"""
+        )
+
+        caption = self.get_caption_from_time(current_time)
+
+        if caption:
+            if self.selected_caption != caption:
+                self.select_caption(caption)
+
     def create_caption_card(self, caption: SRTCaption) -> ui.card:
         """Create a visual card for a caption"""
         card_class = "cursor-pointer border-0 transition-all duration-200 w-full"
@@ -539,12 +561,13 @@ async def video_proxy(request: Request, job_id: str) -> Response:
         content=response.content,
         media_type=response.headers.get("content-type"),
         headers=response.headers,
+        status_code=206,
     )
 
 
 def create() -> None:
     @ui.page("/srt")
-    def result(uuid: str, filename: str) -> None:
+    def result(uuid: str, filename: str, model: str, language: str) -> None:
         """
         Display the result of the transcription job.
         """
@@ -592,6 +615,7 @@ def create() -> None:
                     editor.refresh_display()
                 with splitter.after:
                     with ui.card().classes("w-full h-full"):
+                        autoscroll = ui.switch("Autoscroll")
                         ui.label("Video Preview").classes("text-lg font-bold mb-4")
                         video = ui.video(
                             f"/video/{uuid}",
@@ -600,3 +624,12 @@ def create() -> None:
                             loop=False,
                         ).classes("w-full h-full")
                         editor.set_video_player(video)
+                        video.on(
+                            "timeupdate",
+                            lambda: editor.select_caption_from_video(autoscroll.value),
+                        )
+                        ui.separator()
+                        # Informaiton about filename, language and model
+                        ui.label(f"Filename: {filename}").classes("text-sm")
+                        ui.label(f"Language: {language}").classes("text-sm")
+                        ui.label(f"Model: {model}").classes("text-sm")
