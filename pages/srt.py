@@ -72,6 +72,7 @@ class SRTEditor:
         self.case_sensitive = False
         self.search_container = None
         self.__video_player = None
+        self.autoscroll = False
 
     def set_video_player(self, player) -> None:
         self.__video_player = player
@@ -342,7 +343,7 @@ class SRTEditor:
             self.selected_caption = caption
 
             # Get caption start time
-            if self.__video_player:
+            if self.__video_player and not self.autoscroll:
                 start_seconds = caption.get_start_seconds()
                 self.__video_player.seek(start_seconds)
 
@@ -437,6 +438,8 @@ class SRTEditor:
     async def select_caption_from_video(self, autoscroll: bool) -> None:
         if not autoscroll:
             return
+
+        self.autoscroll = autoscroll
 
         current_time = await ui.run_javascript(
             """(() => { return document.querySelector("video").currentTime })()"""
