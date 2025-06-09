@@ -266,14 +266,6 @@ def table_transcribe(table) -> None:
         ui.notify("Error: No files selected", type="negative", position="top")
         return
 
-    if not any(row["status"] == "Uploaded" for row in selected_rows):
-        ui.notify(
-            "Error: Selected files already transcribed",
-            type="negative",
-            position="top",
-        )
-        return
-
     with ui.dialog() as dialog:
         with ui.card().style(
             "background-color: white; align-self: center; border: 0;"
@@ -300,7 +292,7 @@ def table_transcribe(table) -> None:
                 with ui.column().classes("col-12 col-sm-24"):
                     ui.label("Output format").classes("text-subtitle2 q-mb-sm")
                     output_format = ui.select(
-                        ["SRT"],
+                        ["SRT", "TXT"],
                         label="Select output format",
                     ).classes("w-full")
             ui.separator()
@@ -313,6 +305,7 @@ def table_transcribe(table) -> None:
                         language.value,
                         model.value,
                         output_format.value,
+                        dialog,
                     ),
                 ).props("color=primary")
                 ui.button(
@@ -324,7 +317,7 @@ def table_transcribe(table) -> None:
 
 
 def start_transcription(
-    rows: list, language: str, model: str, output_format: str
+    rows: list, language: str, model: str, output_format: str, dialog: ui.Dialog
 ) -> None:
     # Get selected values
     selected_language = language
@@ -384,6 +377,8 @@ def start_transcription(
                     position="top",
                 )
                 return
+
+        dialog.close()
 
     except Exception as e:
         ui.notify(f"Error: {str(e)}", type="negative", position="top")
