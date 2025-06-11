@@ -21,7 +21,7 @@ def token_refresh() -> None:
         # Get the expiration time from the JWT
         jwt_instance = jwt.JWT()
         jwt_decoded = jwt_instance.decode(auth_token, do_verify=False)
-    except jwt.exceptions.JWTDecodeError:
+    except Exception:
         # Force the user to log out if the token is invalid
         ui.navigate.to(f"{settings.API_URL}/api/logout")
         return
