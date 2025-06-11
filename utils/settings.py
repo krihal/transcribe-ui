@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     API_URL: str = ""
     OIDC_APP_LOGIN_ROUTE: str = ""
     OIDC_APP_LOGOUT_ROUTE: str = ""
-
+    OIDC_APP_REFRESH_ROUTE: str = ""
 @lru_cache
 def get_settings() -> Settings:
     """

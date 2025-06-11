@@ -57,7 +57,7 @@ def logout() -> None:
     """
 
     app.storage.user.clear()
-    ui.navigate.to(f"{API_URL}/api/logout")
+    ui.navigate.to(settings.OIDC_APP_LOGOUT_ROUTE)
 
 
 def show_userinfo() -> None:

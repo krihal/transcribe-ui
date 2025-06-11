@@ -23,7 +23,7 @@ def token_refresh() -> None:
         jwt_decoded = jwt_instance.decode(auth_token, do_verify=False)
     except Exception:
         # Force the user to log out if the token is invalid
-        ui.navigate.to(f"{settings.API_URL}/api/logout")
+        ui.navigate.to(settings.OIDC_APP_LOGOUT_ROUTE)
         return
 
     # Only refresh if the token is about to expire
@@ -33,13 +33,12 @@ def token_refresh() -> None:
 
     try:
         # Make a request to refresh the token
-        response = requests.post(
-            f"{settings.API_URL}/api/refresh",
+        response = requests.post(settings.OIDC_APP_REFRESH_ROUTE,
             json={"token": refresh_token},
         )
         response.raise_for_status()
     except requests.exceptions.RequestException:
-        ui.navigate.to(f"{settings.API_URL}/api/logout")
+        ui.navigate.to(settings.OIDC_APP_LOGOUT_ROUTE)
         return
 
     token = response.json().get("access_token")
@@ -58,7 +57,7 @@ def get_auth_header():
         jwt_instance.decode(token, do_verify=False)
     except Exception:
         # Fetch a new token if we for some reason have an invalid token
-        ui.navigate.to(f"{settings.API_URL}/api/logout")
+        ui.navigate.to(settings.OIDC_APP_LOGOUT_ROUTE)
         return {}
 
     return {"Authorization": f"Bearer {token}"}
