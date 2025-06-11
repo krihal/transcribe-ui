@@ -1,6 +1,9 @@
 import requests
-from nicegui import ui, app
-from utils.common import API_URL, page_init
+
+from nicegui import ui
+from utils.common import get_auth_header
+from utils.common import API_URL
+from utils.common import page_init
 
 
 def save_file(data: str, filename: str) -> None:
@@ -39,16 +42,19 @@ def create() -> None:
         Display the result of the transcription job.
         """
 
-        app.add_static_files(url_path="/static", local_directory="static/")
-        response = requests.get(f"{API_URL}/api/v1/transcriber/{uuid}/result")
+        page_init()
 
-        if response.status_code != 200:
-            ui.notify("Error: Failed to get result")
+        try:
+            response = requests.get(
+                f"{API_URL}/api/v1/transcriber/{uuid}/result/txt",
+                headers=get_auth_header(),
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            ui.notify(f"Error: Failed to get result: {e}")
             return
 
         data = response.content.decode("utf-8")
-
-        page_init()
 
         # Create a toolbar with buttons on the top and the text under button icon
         with ui.row().classes("justify-between items-center"):

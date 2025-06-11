@@ -31,12 +31,6 @@ jobs_columns = [
         "align": "left",
     },
     {
-        "name": "format",
-        "label": "Format",
-        "field": "format",
-        "align": "left",
-    },
-    {
         "name": "model_type",
         "label": "Model",
         "field": "model_type",
@@ -141,18 +135,12 @@ def jobs_get() -> list:
         if job["status"] == "in_progress":
             job["status"] = "transcribing"
 
-        if job["status"] != "completed":
-            output_format = ""
-        else:
-            output_format = job["output_format"].upper()
-
         job_data = {
             "id": idx,
             "uuid": job["uuid"],
             "filename": job["filename"],
             "created_at": job["created_at"],
             "updated_at": job["updated_at"],
-            "format": output_format.capitalize(),
             "language": job["language"].capitalize(),
             "status": job["status"].capitalize(),
             "model_type": job["model_type"].capitalize(),
@@ -174,26 +162,45 @@ def table_click(event) -> None:
     status = event.args[1]["status"].lower()
     uuid = event.args[1]["uuid"]
     filename = event.args[1]["filename"]
-    output_format = event.args[1]["format"]
     model_type = event.args[1]["model_type"]
     language = event.args[1]["language"]
 
     if status != "completed":
         return
 
-    match output_format.lower():
-        case "srt":
-            ui.navigate.to(
-                f"/srt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
-            )
-        case "txt":
-            ui.navigate.to(f"/txt?uuid={uuid}&filename={filename}")
-        case _:
-            ui.notify(
-                "Error: Unsupported output format",
-                type="negative",
-                position="top",
-            )
+    # Dialog to pick which format to open, TXT or SRT
+    with ui.dialog() as dialog:
+        with ui.card().style(
+            "background-color: white; align-self: center; border: 0; width: 100%;"
+        ):
+            ui.label("Select format to edit").classes("text-h6 q-mb-md text-primary")
+
+            with ui.row().classes("justify-center"):
+                ui.button(
+                    "TXT",
+                    icon="text_fields",
+                    on_click=lambda: ui.navigate.to(
+                        f"/txt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
+                    ),
+                ).props("color=primary")
+                ui.button(
+                    "SRT",
+                    icon="subtitles",
+                    on_click=lambda: ui.navigate.to(
+                        f"/srt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
+                    ),
+                ).props("color=primary")
+
+            ui.separator()
+            ui.button(
+                "Cancel",
+                icon="cancel",
+                on_click=lambda: dialog.close(),
+            ).props(
+                "color=primary"
+            ).style("margin-bottom: 10px;")
+
+        dialog.open()
 
 
 def post_file(file: str, filename: str) -> None:
@@ -288,13 +295,6 @@ def table_transcribe(table) -> None:
                         ["Tiny", "Base", "Large"],
                         label="Select model",
                     ).classes("w-full")
-
-                with ui.column().classes("col-12 col-sm-24"):
-                    ui.label("Output format").classes("text-subtitle2 q-mb-sm")
-                    output_format = ui.select(
-                        ["SRT", "TXT"],
-                        label="Select output format",
-                    ).classes("w-full")
             ui.separator()
             with ui.row():
                 ui.button(
@@ -304,7 +304,6 @@ def table_transcribe(table) -> None:
                         selected_rows,
                         language.value,
                         model.value,
-                        output_format.value,
                         dialog,
                     ),
                 ).props("color=primary")
@@ -317,7 +316,7 @@ def table_transcribe(table) -> None:
 
 
 def start_transcription(
-    rows: list, language: str, model: str, output_format: str, dialog: ui.Dialog
+    rows: list, language: str, model: str, dialog: ui.dialog
 ) -> None:
     # Get selected values
     selected_language = language
@@ -351,8 +350,6 @@ def start_transcription(
             )
             return
 
-    output_format = output_format.lower()
-
     # Start the transcription job
     try:
         for row in rows:
@@ -364,13 +361,12 @@ def start_transcription(
                     json={
                         "language": f"{selected_language}",
                         "model": f"{selected_model}",
-                        "output_format": f"{output_format}",
                         "status": "pending",
                     },
                     headers=get_auth_header(),
                 )
                 response.raise_for_status()
-            except requests.exceptions.RequestException as e:
+            except requests.exceptions.RequestException:
                 ui.notify(
                     "Error: Failed to start transcription.",
                     type="negative",
