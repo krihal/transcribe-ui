@@ -1,25 +1,15 @@
-import requests
-from nicegui import ui, app
-from utils.common import page_init, API_URL, get_auth_header
-from typing import List, Optional
 import re
-from fastapi.responses import Response
+import requests
+
 from fastapi import Request
-
-# Set up global state
-expanded_row = None  # Track which row is currently expanded
-edit_inputs = {}  # Store input elements for the currently edited row
-data = []
-edit_panel = None
-video = None
-table = None
-table_page = None
-
-#!/usr/bin/env python3
-"""
-Advanced SRT Subtitle Editor using NiceGUI
-Features: Split, Add, Remove captions with intuitive UI and Search functionality
-"""
+from fastapi.responses import Response
+from nicegui import app
+from nicegui import ui
+from typing import List
+from typing import Optional
+from utils.common import API_URL
+from utils.common import get_auth_header
+from utils.common import page_init
 
 
 class SRTCaption:
@@ -574,13 +564,12 @@ def create() -> None:
         """
         Display the result of the transcription job.
         """
-        global data, edit_panel, video, table, table_page
-
         page_init()
 
         try:
             response = requests.get(
-                f"{API_URL}/api/v1/transcriber/{uuid}/result", headers=get_auth_header()
+                f"{API_URL}/api/v1/transcriber/{uuid}/result/srt",
+                headers=get_auth_header(),
             )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
@@ -632,7 +621,7 @@ def create() -> None:
                             lambda: editor.select_caption_from_video(autoscroll.value),
                         )
                         ui.separator()
-                        # Informaiton about filename, language and model
-                        ui.label(f"Filename: {filename}").classes("text-sm")
-                        ui.label(f"Language: {language}").classes("text-sm")
-                        ui.label(f"Model: {model}").classes("text-sm")
+                        ui.html(f"<b>UUID:</b> {uuid}").classes("text-sm")
+                        ui.html(f"<b>Filename:</b> {filename}").classes("text-sm")
+                        ui.html(f"<b>Language:</b> {language}").classes("text-sm")
+                        ui.html(f"<b>Model:</b> {model}").classes("text-sm")
