@@ -64,6 +64,8 @@ def show_userinfo() -> None:
     """
     Show a dialog with user information and a logout button.
     """
+    username, lifetime = get_user_info()
+
     with ui.dialog() as dialog:
         with ui.card().style("width: 50%; align-self: center; margin-top: 10%;"):
             ui.label("User Information").classes("text-h5")
@@ -71,7 +73,9 @@ def show_userinfo() -> None:
 
             with ui.row().style("align-items: center; justify-content: center;"):
                 with ui.column().classes("col-12 col-sm-6"):
-                    ui.label(f"Username: {get_user_info()}")
+                    ui.label(f"Username: {username}")
+                with ui.column().classes("col-12 col-sm-6"):
+                    ui.label(f"Token expires in {lifetime} seconds")
 
             ui.separator()
             ui.button(
@@ -90,7 +94,7 @@ def page_init(header_text: Optional[str] = "") -> None:
     Initialize the page with a header and background color.
     """
 
-    ui.timer(10, token_refresh)
+    ui.timer(30, token_refresh)
     ui.add_head_html("<style>body {background-color: #ffffff;}</style>")
 
     if header_text:

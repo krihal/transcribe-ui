@@ -33,7 +33,8 @@ def token_refresh() -> None:
 
     try:
         # Make a request to refresh the token
-        response = requests.post(settings.OIDC_APP_REFRESH_ROUTE,
+        response = requests.post(
+            settings.OIDC_APP_REFRESH_ROUTE,
             json={"token": refresh_token},
         )
         response.raise_for_status()
@@ -76,6 +77,7 @@ def get_user_info():
     try:
         jwt_instance = jwt.JWT()
         decoded_token = jwt_instance.decode(token, do_verify=False)
+        lifetime = decoded_token["exp"] - int(time.time())
 
         if "eduPersonPrincipalName" in decoded_token:
             username = decoded_token["eduPersonPrincipalName"]
@@ -86,6 +88,6 @@ def get_user_info():
         else:
             username = "Unknown"
     except Exception:
-        return {}
+        return None
 
-    return username
+    return username, lifetime
