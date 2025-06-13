@@ -45,8 +45,17 @@ def token_refresh() -> None:
     token = response.json().get("access_token")
     app.storage.user["token"] = token
 
+    if settings.API_DEBUG:
+        ui.notification(
+            "Token refreshed successfully.",
+            color="green",
+            icon="check_circle",
+            position="bottom-right",
+            timeout=2,
+        )
 
-def get_auth_header():
+
+def get_auth_header() -> dict[str, str]:
     """
     Get the authorization header for API requests.
     """
@@ -64,7 +73,7 @@ def get_auth_header():
     return {"Authorization": f"Bearer {token}"}
 
 
-def get_user_info():
+def get_user_info() -> tuple[str, int] | None:
     """
     Get user information from token.
     """
@@ -72,7 +81,7 @@ def get_user_info():
     token = app.storage.user.get("token")
 
     if not token:
-        return {}
+        return None, None
 
     try:
         jwt_instance = jwt.JWT()
@@ -88,6 +97,6 @@ def get_user_info():
         else:
             username = "Unknown"
     except Exception:
-        return None
+        return None, None
 
     return username, lifetime
