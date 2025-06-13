@@ -94,9 +94,6 @@ def page_init(header_text: Optional[str] = "") -> None:
     Initialize the page with a header and background color.
     """
 
-    ui.timer(30, token_refresh)
-    ui.add_head_html("<style>body {background-color: #ffffff;}</style>")
-
     if header_text:
         header_text = f" - {header_text}"
 
@@ -118,6 +115,12 @@ def page_init(header_text: Optional[str] = "") -> None:
                 icon="help",
                 on_click=lambda: ui.navigate.to("/home"),
             ).props("flat color=white")
+
+            if ui.timer(30, token_refresh):
+                ui.notify(
+                    "Token refresh timer started", type="info", position="bottom-right"
+                )
+            ui.add_head_html("<style>body {background-color: #ffffff;}</style>")
 
 
 def jobs_get() -> list:
@@ -178,32 +181,20 @@ def table_click(event) -> None:
             "background-color: white; align-self: center; border: 0; width: 100%;"
         ):
             ui.label("Select format to edit").classes("text-h6 q-mb-md text-primary")
-
-            with ui.row().classes("justify-center"):
-                ui.button(
-                    "TXT",
-                    icon="text_fields",
-                    on_click=lambda: ui.navigate.to(
-                        f"/txt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
-                    ),
-                ).props("color=primary")
-                ui.button(
-                    "SRT",
-                    icon="subtitles",
-                    on_click=lambda: ui.navigate.to(
-                        f"/srt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
-                    ),
-                ).props("color=primary")
-
-            ui.separator()
             ui.button(
-                "Cancel",
-                icon="cancel",
-                on_click=lambda: dialog.close(),
-            ).props(
-                "color=primary"
-            ).style("margin-bottom: 10px;")
-
+                "TXT",
+                icon="text_fields",
+                on_click=lambda: ui.navigate.to(
+                    f"/txt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
+                ),
+            ).props("color=primary").classes("w-1/2").style("align-self: center;")
+            ui.button(
+                "SRT",
+                icon="subtitles",
+                on_click=lambda: ui.navigate.to(
+                    f"/srt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
+                ),
+            ).props("color=primary").classes("w-1/2").style("align-self: center;")
         dialog.open()
 
 
