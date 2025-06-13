@@ -1,47 +1,388 @@
+import json
 import requests
 
+from fastapi import Request
+from fastapi.responses import Response
+from nicegui import app
 from nicegui import ui
-from utils.common import get_auth_header
+from typing import Any
+from typing import Dict
+from typing import List
 from utils.common import API_URL
+from utils.common import get_auth_header
 from utils.common import page_init
 
 
-def save_file(data: str, filename: str) -> None:
-    """
-    Save the edited content to a file.
-    """
+class TranscriptSegment:
+    def __init__(self, speaker: str, text: str, start: float = 0.0, end: float = 0.0):
+        self.speaker = speaker
+        self.text = text
+        self.start = start
+        self.end = end
+        self.duration = end - start
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "speaker": self.speaker,
+            "text": self.text,
+            "start": self.start,
+            "end": self.end,
+            "duration": self.duration,
+        }
+
+
+class TranscriptEditor:
+    def __init__(self, data: str):
+        self.original_data = json.loads(data)
+        self.segments: List[TranscriptSegment] = []
+        self.speakers = set()
+        self.container = None
+        self.parse_segments()
+        self.video_player = None
+        self.autoscroll = False
+
+    async def select_caption_from_video(self, autoscroll: bool) -> None:
+        if not autoscroll:
+            return
+
+        self.autoscroll = autoscroll
+
+        current_time = await ui.run_javascript(
+            """(() => { return document.querySelector("video").currentTime })()"""
+        )
+
+    def get_segment_from_time(self, time: float) -> TranscriptSegment:
+        for segment in self.segments:
+            if segment.start <= time <= segment.end:
+                return segment
+
+        return None
+
+    def set_video_player(self, player) -> None:
+        self.video_player = player
+
+    def parse_segments(self):
+        if not self.original_data.get("segments"):
+            return
+
+        raw_segments = self.original_data["segments"]
+
+        if not raw_segments:
+            return
+
+        concatenated = []
+        current = raw_segments[0].copy()
+
+        for segment in raw_segments[1:]:
+            if segment["speaker"] == current["speaker"]:
+                current["text"] += " " + segment["text"]
+                current["end"] = segment["end"]
+                current["duration"] = current["end"] - current["start"]
+            else:
+                concatenated.append(current)
+                current = segment.copy()
+
+        concatenated.append(current)
+
+        for seg in concatenated:
+            if seg.get("text", "").strip():
+                self.segments.append(
+                    TranscriptSegment(
+                        speaker=seg["speaker"],
+                        text=seg["text"],
+                        start=seg.get("start", 0.0),
+                        end=seg.get("end", 0.0),
+                    )
+                )
+                self.speakers.add(seg["speaker"])
+
+    def add_segment(self, speaker: str, text: str, position: int = None):
+        if position is None:
+            position = len(self.segments)
+
+        new_segment = TranscriptSegment(speaker, text)
+
+        self.segments.insert(position, new_segment)
+        self.speakers.add(speaker)
+        self.refresh_ui()
+
+    def remove_segment(self, index: int):
+        if 0 <= index < len(self.segments):
+            self.segments.pop(index)
+            self.refresh_ui()
+
+    def update_segment(self, index: int, speaker: str = None, text: str = None):
+        if 0 <= index < len(self.segments):
+            if speaker is not None:
+                self.segments[index].speaker = speaker
+                self.speakers.add(speaker)
+            if text is not None:
+                self.segments[index].text = text
+
+    def move_segment(self, from_index: int, to_index: int):
+        if 0 <= from_index < len(self.segments) and 0 <= to_index < len(self.segments):
+            segment = self.segments.pop(from_index)
+
+            self.segments.insert(to_index, segment)
+            self.refresh_ui()
+
+    def get_export_data(self) -> str:
+        result = []
+
+        for segment in self.segments:
+            result.append(f"{segment.speaker}: {segment.text}")
+
+        return "\n\n".join(result)
+
+    def get_json_data(self) -> str:
+        return json.dumps(
+            {
+                "segments": [seg.to_dict() for seg in self.segments],
+                "speaker_count": len(self.speakers),
+                "full_transcription": " ".join(seg.text for seg in self.segments),
+            },
+            indent=2,
+        )
+
+    def refresh_ui(self):
+        if self.container:
+            self.container.clear()
+            with self.container:
+                self._render_segments()
+
+    def _create_segment_ui(self, segment: TranscriptSegment, index: int):
+        def __segment_selected():
+            action_col.visible = True
+            action_col.classes("border-blue-500 bg-blue-50 shadow-lg")
+            text_row.classes("bg-blue-50 border-blue-500")
+            text_editor.classes("bg-blue-50 border-blue-500")
+
+            if self.video_player and not self.autoscroll:
+                self.video_player.seek(segment.start)
+
+        def __segment_blur():
+            action_col.visible = False
+            action_col.classes("hover:shadow-md shadow-none")
+            text_row.classes("bg-white border-gray-300")
+            text_editor.classes("bg-white border-gray-300")
+
+        with ui.column().classes("w-full mb-4 p-4"):
+            with ui.row().classes("w-full"):
+                with ui.column().classes("flex-grow"):
+                    with ui.row().classes("items-center gap-2 mb-2"):
+                        speaker_select = ui.select(
+                            options=list(self.speakers),
+                            value=segment.speaker,
+                            label="Speaker",
+                            with_input=True,
+                        ).classes("w-32")
+
+                        speaker_select.on_value_change(
+                            lambda e, idx=index: self.update_segment(
+                                idx, speaker=e.value
+                            )
+                        )
+
+                        with ui.button(icon="add").props("flat round"):
+                            with ui.menu():
+                                with ui.column():
+                                    new_speaker_input = ui.input("New Speaker")
+                                    ui.button(
+                                        "Add",
+                                        on_click=lambda: self._add_new_speaker(
+                                            new_speaker_input.value,
+                                            speaker_select,
+                                            index,
+                                        ),
+                                    )
+
+                with ui.column().classes("flex-shrink-0 gap-1") as action_col:
+                    action_col.visible = False
+                    ui.button(
+                        icon="keyboard_arrow_up",
+                        on_click=lambda idx=index: self.move_segment(
+                            idx, max(0, idx - 1)
+                        ),
+                    ).props("flat round").set_enabled(index > 0)
+                    ui.button(
+                        icon="keyboard_arrow_down",
+                        on_click=lambda idx=index: self.move_segment(
+                            idx, min(len(self.segments) - 1, idx + 1)
+                        ),
+                    ).props("flat round").set_enabled(index < len(self.segments) - 1)
+                    ui.button(
+                        icon="add_circle",
+                        color="positive",
+                        on_click=lambda idx=index: self._show_insert_dialog(idx),
+                    ).props("flat round")
+                    ui.button(
+                        icon="delete",
+                        color="negative",
+                        on_click=lambda idx=index: self._confirm_delete(idx),
+                    ).props("flat round")
+
+                with ui.row().classes("items-center w-2/3") as text_row:
+                    ui.label(f"{segment.start:.2f} - {segment.end:.2f}").classes(
+                        "text-sm text-gray-500"
+                    )
+                    text_editor = (
+                        ui.editor(value=segment.text, placeholder="Enter text...")
+                        .style("font-family: monospace; border: 0; width: 100%;")
+                        .props("min-height=0")
+                    )
+                    text_editor.on_value_change(
+                        lambda e, idx=index: self.update_segment(idx, text=e.value)
+                    )
+                    text_editor.on("click", lambda: __segment_selected())
+                    text_editor.on("blur", lambda: __segment_blur())
+
+    def _add_new_speaker(self, speaker_name: str, speaker_select, segment_index: int):
+        if speaker_name and speaker_name not in self.speakers:
+            self.speakers.add(speaker_name)
+            speaker_select.options = list(self.speakers)
+            speaker_select.value = speaker_name
+            self.update_segment(segment_index, speaker=speaker_name)
+
+    def _confirm_delete(self, index: int):
+        with ui.dialog().props("persistent") as dialog, ui.card():
+            ui.label("Are you sure you want to delete this segment?")
+            with ui.row():
+                ui.button("Cancel", on_click=dialog.close)
+                ui.button(
+                    "Delete",
+                    color="negative",
+                    on_click=lambda: (self.remove_segment(index), dialog.close()),
+                )
+
+        dialog.open()
+
+    def _show_insert_dialog(self, position: int):
+        with ui.dialog().props("persistent") as dialog:
+            with ui.card().classes("w-full max-w-2xl"):
+                ui.label("Insert New Segment")
+
+                speaker_input = ui.select(
+                    options=list(self.speakers), label="Speaker"
+                ).classes("w-full")
+
+                text_input = ui.textarea("Text").classes("w-full")
+
+                position_select = ui.select(
+                    options=["Before this segment", "After this segment"],
+                    value="After this segment",
+                    label="Position",
+                )
+
+                with ui.row():
+                    ui.button("Cancel", on_click=dialog.close)
+                    ui.button(
+                        "Insert",
+                        color="positive",
+                        on_click=lambda: self._do_insert(
+                            dialog,
+                            speaker_input.value,
+                            text_input.value,
+                            position,
+                            position_select.value,
+                        ),
+                    )
+            dialog.open()
+
+    def _do_insert(
+        self, dialog, speaker: str, text: str, base_position: int, position_type: str
+    ):
+        if not speaker or not text:
+            ui.notify("Please provide both speaker and text", type="warning")
+            return
+
+        insert_pos = (
+            base_position
+            if position_type == "Before this segment"
+            else base_position + 1
+        )
+
+        self.add_segment(speaker, text, insert_pos)
+
+        dialog.close()
+
+        ui.notify("Segment inserted successfully", type="positive")
+
+    def _render_segments(self):
+        if not self.segments:
+            ui.label("No segments found").classes("text-center text-gray-500")
+            return
+
+        for i, segment in enumerate(self.segments):
+            self._create_segment_ui(segment, i)
+
+    def render(self):
+        ui.add_css(
+            """
+            .q-textarea .q-field__control { 
+                font-family: 'Courier New', monospace; 
+                font-size: 14px; 
+            }
+        """
+        )
+
+        self.container = ui.column().classes("w-full")
+
+        with self.container:
+            self._render_segments()
+
+    def _show_add_segment_dialog(self):
+        with ui.dialog() as dialog, ui.card():
+            ui.label("Add New Segment")
+
+            speaker_input = ui.select(
+                options=list(self.speakers), label="Speaker"
+            ).classes("w-full")
+
+            new_speaker_input = ui.input("New Speaker").classes("w-full")
+            text_input = ui.textarea("Text").classes("w-full")
+
+            with ui.row():
+                ui.button("Cancel", on_click=dialog.close)
+                ui.button(
+                    "Add",
+                    color="positive",
+                    on_click=lambda: (
+                        self.add_segment(
+                            speaker_input.value or new_speaker_input.value,
+                            text_input.value,
+                        ),
+                        dialog.close(),
+                        ui.notify("Segment added successfully", type="positive"),
+                    ),
+                )
+        dialog.open()
+
+
+def save_file(data: str, filename: str) -> None:
     ui.download(filename, data)
 
 
-def txt_editor(data) -> ui.editor:
-    """
-    Create a text editor with the given data.
-    """
-    editor = (
-        ui.editor(
-            value=data,
-        )
-        .style(
-            "width: 100%; height: calc(100vh - 100px); white-space: pre-wrap; margin-top: 20px;"
-        )
-        .classes("no-border no-shadow")
+@app.get("/video/{job_id}")
+async def video_proxy(request: Request, job_id: str) -> Response:
+    headers = dict(request.headers)
+    headers["Authorization"] = get_auth_header().get("Authorization", "")
+
+    response = requests.get(
+        f"{API_URL}/api/v1/transcriber/{job_id}/videostream",
+        headers=headers,
     )
 
-    return editor
+    return Response(
+        content=response.content,
+        media_type=response.headers.get("content-type"),
+        headers=response.headers,
+        status_code=206,
+    )
 
 
 def create() -> None:
-    """
-    Create the text page.
-    """
-
     @ui.page("/txt")
-    def result(uuid: str, filename: str) -> None:
-        """
-        Display the result of the transcription job.
-        """
-
+    def result(uuid: str, filename: str, language: str, model: str) -> None:
         page_init()
 
         try:
@@ -51,20 +392,47 @@ def create() -> None:
             )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            ui.notify(f"Error: Failed to get result: {e}")
+            ui.notify(f"Error: Failed to get result: {e}", type="negative")
             return
 
         data = response.content.decode("utf-8")
+        editor = TranscriptEditor(data)
 
-        # Create a toolbar with buttons on the top and the text under button icon
-        with ui.row().classes("justify-between items-center"):
-            ui.button("Files", icon="folder").on_click(
-                lambda: ui.navigate.to("/home")
-            ).style("width: 150px;")
-            ui.button(
-                "Export",
-                icon="save",
-                on_click=lambda: save_file(data, filename),
-            ).style("width: 150px;")
+        ui.add_css(".q-editor__toolbar { display: none }")
 
-        txt_editor(data)
+        with ui.row().classes("justify-between items-center mb-4"):
+            with ui.button_group().props("outline"):
+                ui.button("Save", icon="save").style("width: 150px;")
+                ui.button("Export", icon="share").style("width: 150px;")
+
+        ui.separator()
+
+        with ui.splitter(value=60).classes("w-full h-screen") as splitter:
+            with splitter.before:
+                with ui.scroll_area().style("height: calc(100vh - 200px);"):
+                    editor.render()
+
+            with splitter.after:
+                with ui.card().classes("w-full h-full"):
+                    autoscroll = ui.switch("Autoscroll")
+                    ui.label("Video Preview").classes("text-lg font-bold mb-4")
+                    video = ui.video(
+                        f"/video/{uuid}",
+                        controls=True,
+                        autoplay=False,
+                        loop=False,
+                    ).classes("w-full")
+
+                    editor.set_video_player(video)
+                    video.on(
+                        "timeupdate",
+                        lambda: editor.select_caption_from_video(autoscroll.value),
+                    )
+
+                    video.style("align-self: flex-start;")
+
+                    ui.separator()
+                    ui.html(f"<b>UUID:</b> {uuid}").classes("text-sm")
+                    ui.html(f"<b>Filename:</b> {filename}").classes("text-sm")
+                    ui.html(f"<b>Language:</b> {language}").classes("text-sm")
+                    ui.html(f"<b>Model:</b> {model}").classes("text-sm")
