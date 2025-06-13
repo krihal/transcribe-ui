@@ -1,10 +1,13 @@
 import asyncio
 import requests
 
-from nicegui import ui, app
+from nicegui import app
+from nicegui import ui
 from typing import Optional
 from utils.settings import get_settings
-from utils.token import token_refresh, get_auth_header, get_user_info
+from utils.token import get_auth_header
+from utils.token import get_user_info
+from utils.token import token_refresh
 
 settings = get_settings()
 API_URL = settings.API_URL
