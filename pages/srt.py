@@ -1,19 +1,23 @@
 import re
 import requests
 
-from fastapi import Request
-from fastapi.responses import Response
-from nicegui import app
 from nicegui import ui
 from typing import List
 from typing import Optional
 from utils.common import API_URL
 from utils.common import get_auth_header
 from utils.common import page_init
+from utils.video import create_video_proxy
+
+create_video_proxy()
 
 
 class SRTCaption:
     def __init__(self, index: int, start_time: str, end_time: str, text: str):
+        """
+        Initialize a caption with index, start time, end time, and text.
+        """
+
         self.index = index
         self.start_time = start_time
         self.end_time = end_time
@@ -25,33 +29,48 @@ class SRTCaption:
         return f"{self.index}\n{self.start_time} --> {self.end_time}\n{self.text}\n"
 
     def get_start_seconds(self) -> float:
-        """Convert timestamp to seconds for calculations"""
+        """
+        Convert timestamp to seconds for calculations.
+        """
+
         time_parts = self.start_time.replace(",", ".").split(":")
         hours = float(time_parts[0])
         minutes = float(time_parts[1])
         seconds = float(time_parts[2])
+
         return hours * 3600 + minutes * 60 + seconds
 
     def get_end_seconds(self) -> float:
-        """Convert timestamp to seconds for calculations"""
+        """
+        Convert timestamp to seconds for calculations.
+        """
+
         time_parts = self.end_time.replace(",", ".").split(":")
         hours = float(time_parts[0])
         minutes = float(time_parts[1])
         seconds = float(time_parts[2])
+
         return hours * 3600 + minutes * 60 + seconds
 
     def matches_search(self, search_term: str, case_sensitive: bool = False) -> bool:
-        """Check if caption matches search term"""
+        """
+        Check if caption matches search term.
+        """
         if not search_term:
             return False
 
         text = self.text if case_sensitive else self.text.lower()
         term = search_term if case_sensitive else search_term.lower()
+
         return term in text
 
 
 class SRTEditor:
     def __init__(self):
+        """
+        Initialize the SRT editor with empty captions and other properties.
+        """
+
         self.captions: List[SRTCaption] = []
         self.selected_caption: Optional[SRTCaption] = None
         self.caption_cards = {}
@@ -65,9 +84,17 @@ class SRTEditor:
         self.autoscroll = False
 
     def set_video_player(self, player) -> None:
+        """
+        Set the video player for the editor.
+        """
+
         self.__video_player = player
 
     def parse_srt(self, srt_content: str) -> None:
+        """
+        Parse SRT content and populate captions list.
+        """
+
         self.captions = []
 
         caption_blocks = re.split(r"\n\s*\n", srt_content.strip())
@@ -98,25 +125,38 @@ class SRTEditor:
         self.renumber_captions()
 
     def renumber_captions(self) -> None:
-        """Renumber all captions sequentially"""
+        """
+        Renumber all captions sequentially.
+        """
+
         for i, caption in enumerate(self.captions, 1):
             caption.index = i
 
     def format_time_display(self, timestamp: str) -> str:
-        """Format timestamp for display"""
+        """
+        Format timestamp for display.
+        """
+
         return timestamp.replace(",", ".")
 
     def seconds_to_timestamp(self, seconds: float) -> str:
-        """Convert seconds back to SRT timestamp format"""
+        """
+        Convert seconds back to SRT timestamp format.
+        """
+
         hours = int(seconds // 3600)
         minutes = int((seconds % 3600) // 60)
         secs = seconds % 60
         milliseconds = int((secs % 1) * 1000)
         secs = int(secs)
+
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{milliseconds:03d}"
 
     def search_captions(self, search_term: str) -> None:
-        """Search for captions containing the search term"""
+        """
+        Search for captions containing the search term.
+        """
+
         self.search_term = search_term
         self.search_results = []
 
@@ -147,7 +187,9 @@ class SRTEditor:
             ui.notify("No matches found", type="info")
 
     def navigate_search_results(self, direction: int) -> None:
-        """Navigate through search results (direction: 1 for next, -1 for previous)"""
+        """
+        Navigate through search results (direction: 1 for next, -1 for previous).
+        """
         if not self.search_results:
             return
 
@@ -158,7 +200,9 @@ class SRTEditor:
         self.update_search_info()
 
     def scroll_to_result(self, result_index: int) -> None:
-        """Scroll to a specific search result"""
+        """
+        Scroll to a specific search result.
+        """
         if not self.search_results or result_index >= len(self.search_results):
             return
 
@@ -168,7 +212,9 @@ class SRTEditor:
             self.select_caption(self.captions[caption_index])
 
     def replace_in_current_caption(self, replacement: str) -> None:
-        """Replace search term in currently selected caption"""
+        """
+        Replace search term in currently selected caption.
+        """
         if not self.selected_caption or not self.search_term:
             ui.notify("No caption selected or search term empty", type="warning")
             return
@@ -190,7 +236,9 @@ class SRTEditor:
             ui.notify("Current caption doesn't contain search term", type="warning")
 
     def replace_all(self, replacement: str) -> None:
-        """Replace search term in all matching captions"""
+        """
+        Replace search term in all matching captions.
+        """
         if not self.search_term:
             ui.notify("No search term entered", type="warning")
             return
@@ -213,7 +261,9 @@ class SRTEditor:
             ui.notify("No matches found to replace", type="info")
 
     def update_search_info(self) -> None:
-        """Update search information display"""
+        """
+        Update search information display.
+        """
         if hasattr(self, "search_info_label") and self.search_info_label:
             if self.search_results:
                 info_text = f"{self.current_search_index + 1} of {len(self.search_results)} matches"
@@ -222,7 +272,9 @@ class SRTEditor:
             self.search_info_label.set_text(info_text)
 
     def get_highlighted_text(self, text: str) -> str:
-        """Get text with search term highlighted (for display purposes)"""
+        """
+        Get text with search term highlighted (for display purposes).
+        """
         if not self.search_term or not text:
             return text
 
@@ -240,7 +292,9 @@ class SRTEditor:
         return highlighted
 
     def split_caption(self, caption: SRTCaption) -> None:
-        """Split a caption into two parts"""
+        """
+        Split a caption into two parts.
+        """
         text_lines = caption.text.split("\n")
 
         if len(text_lines) == 1:
@@ -286,7 +340,10 @@ class SRTEditor:
         self.refresh_display()
 
     def add_caption_after(self, caption: SRTCaption) -> None:
-        """Add a new caption after the selected one"""
+        """
+        Add a new caption after the selected one.
+        """
+
         # Calculate new caption timing
         start_seconds = caption.get_end_seconds()
 
@@ -313,7 +370,10 @@ class SRTEditor:
         self.refresh_display()
 
     def remove_caption(self, caption: SRTCaption) -> None:
-        """Remove a caption"""
+        """
+        Remove a caption.
+        """
+
         if len(self.captions) > 1:  # Don't remove if it's the only caption
             self.captions.remove(caption)
             self.renumber_captions()
@@ -322,7 +382,10 @@ class SRTEditor:
             ui.notify("Cannot remove the only remaining caption", type="warning")
 
     def select_caption(self, caption: SRTCaption) -> None:
-        """Select/deselect a caption"""
+        """
+        Select/deselect a caption.
+        """
+
         if self.selected_caption:
             self.selected_caption.is_selected = False
 
@@ -340,24 +403,36 @@ class SRTEditor:
         self.refresh_display()
 
     def update_caption_text(self, caption: SRTCaption, new_text: str) -> None:
-        """Update caption text"""
+        """
+        Update caption text.
+        """
+
         caption.text = new_text
         self.refresh_display()
 
     def update_caption_timing(
         self, caption: SRTCaption, start_time: str, end_time: str
     ) -> None:
-        """Update caption timing"""
+        """
+        Update caption timing.
+        """
+
         caption.start_time = start_time
         caption.end_time = end_time
         self.refresh_display()
 
     def export_srt(self) -> str:
-        """Export captions to SRT format"""
+        """
+        Export captions to SRT format.
+        """
+
         return "\n\n".join(caption.to_srt_format() for caption in self.captions)
 
     def create_search_panel(self) -> None:
-        """Create the search panel UI"""
+        """
+        Create the search panel UI.
+        """
+
         with ui.expansion("Search & Replace").classes("w-full").style(
             "background-color: #eff4fb;"
         ):
@@ -418,7 +493,10 @@ class SRTEditor:
             )
 
     def get_caption_from_time(self, caption_time: float) -> Optional[SRTCaption]:
-        """Get caption at a specific time"""
+        """
+        Get caption at a specific time.
+        """
+
         for caption in self.captions:
             if caption.get_start_seconds() <= caption_time <= caption.get_end_seconds():
                 return caption
@@ -442,7 +520,10 @@ class SRTEditor:
                 self.select_caption(caption)
 
     def create_caption_card(self, caption: SRTCaption) -> ui.card:
-        """Create a visual card for a caption"""
+        """
+        Create a visual card for a caption.
+        """
+
         card_class = "cursor-pointer border-0 transition-all duration-200 w-full"
 
         if caption.is_selected:
@@ -538,24 +619,6 @@ class SRTEditor:
                 else:
                     for caption in self.captions:
                         self.create_caption_card(caption)
-
-
-@app.get("/video/{job_id}")
-async def video_proxy(request: Request, job_id: str) -> Response:
-    headers = dict(request.headers)
-    headers["Authorization"] = get_auth_header().get("Authorization", "")
-
-    response = requests.get(
-        f"{API_URL}/api/v1/transcriber/{job_id}/videostream",
-        headers=headers,
-    )
-
-    return Response(
-        content=response.content,
-        media_type=response.headers.get("content-type"),
-        headers=response.headers,
-        status_code=206,
-    )
 
 
 def create() -> None:
