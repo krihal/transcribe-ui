@@ -1,4 +1,4 @@
-from nicegui import ui, app
+from nicegui import ui
 from utils.common import (
     page_init,
     jobs_get,
