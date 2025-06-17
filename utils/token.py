@@ -7,6 +7,7 @@ from nicegui import ui
 from typing import Optional
 from utils.settings import get_settings
 
+
 settings = get_settings()
 
 
@@ -89,3 +90,23 @@ def get_user_info() -> tuple[str, int] | None:
         return None, None
 
     return username, lifetime
+
+
+def get_admin_status() -> bool:
+    """
+    Check if the user is an admin based on the token.
+    """
+
+    try:
+        response = requests.get(
+            f"{settings.API_URL}/api/v1/me", headers=get_auth_header()
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        return data["result"]["admin"]
+
+    except requests.exceptions.RequestException:
+        return False
+
+    return True

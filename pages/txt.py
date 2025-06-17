@@ -54,8 +54,6 @@ class TranscriptEditor:
             """(() => { return document.querySelector("video").currentTime })()"""
         )
 
-        print(current_time)
-
         caption = self.get_segment_from_time(current_time)
 
         if caption:
@@ -156,19 +154,18 @@ class TranscriptEditor:
         result = []
 
         for segment in self.segments:
-            result.append(f"{segment.speaker}: {segment.text}")
+            result.append(
+                f"{segment.start} -> {segment.end}, {segment.speaker}: {segment.text}"
+            )
 
         return "\n\n".join(result)
 
     def get_json_data(self) -> str:
-        return json.dumps(
-            {
-                "segments": [seg.to_dict() for seg in self.segments],
-                "speaker_count": len(self.speakers),
-                "full_transcription": " ".join(seg.text for seg in self.segments),
-            },
-            indent=2,
-        )
+        return {
+            "segments": [seg.to_dict() for seg in self.segments],
+            "speaker_count": len(self.speakers),
+            "full_transcription": " ".join(seg.text for seg in self.segments),
+        }
 
     def refresh_ui(self):
         if self.container:
@@ -386,8 +383,26 @@ class TranscriptEditor:
         dialog.open()
 
 
-def save_file(data: str, filename: str) -> None:
-    ui.download(filename, data)
+def export_file(data: str, filename: str) -> None:
+    ui.download.content(data, filename)
+
+
+def save_file(job_id: str, data: str) -> None:
+    data["format"] = "json"
+    headers = get_auth_header()
+    headers["Content-Type"] = "application/json"
+    requests.put(
+        f"{API_URL}/api/v1/transcriber/{job_id}/result",
+        headers=headers,
+        json=data,
+    )
+
+    ui.notify(
+        "File saved successfully",
+        type="positive",
+        position="bottom",
+        icon="check_circle",
+    )
 
 
 def create() -> None:
@@ -405,15 +420,22 @@ def create() -> None:
             ui.notify(f"Error: Failed to get result: {e}", type="negative")
             return
 
-        data = response.content.decode("utf-8")
-        editor = TranscriptEditor(data)
+        data = response.json()
+        editor = TranscriptEditor(data["result"])
 
         ui.add_css(".q-editor__toolbar { display: none }")
 
         with ui.row().classes("justify-between items-center mb-4"):
             with ui.button_group().props("outline"):
-                ui.button("Save", icon="save").style("width: 150px;")
-                ui.button("Export", icon="share").style("width: 150px;")
+                ui.button("Save", icon="save").style("width: 150px;").on_click(
+                    lambda: save_file(uuid, editor.get_json_data())
+                )
+                ui.button("Export", icon="share").style("width: 150px;").on_click(
+                    lambda: export_file(
+                        editor.get_export_data(),
+                        f"{filename}.txt",
+                    )
+                )
 
         ui.separator()
 

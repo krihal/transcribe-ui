@@ -124,6 +124,13 @@ class SRTEditor:
 
         self.renumber_captions()
 
+    def export_srt(self) -> str:
+        """
+        Export captions to SRT format.
+        """
+
+        return "\n\n".join(caption.to_srt_format() for caption in self.captions)
+
     def renumber_captions(self) -> None:
         """
         Renumber all captions sequentially.
@@ -421,13 +428,6 @@ class SRTEditor:
         caption.end_time = end_time
         self.refresh_display()
 
-    def export_srt(self) -> str:
-        """
-        Export captions to SRT format.
-        """
-
-        return "\n\n".join(caption.to_srt_format() for caption in self.captions)
-
     def create_search_panel(self) -> None:
         """
         Create the search panel UI.
@@ -621,6 +621,24 @@ class SRTEditor:
                         self.create_caption_card(caption)
 
 
+def save_srt(job_id: str, data: str) -> None:
+    jsondata = {"format": "srt", "data": data}
+    headers = get_auth_header()
+    headers["Content-Type"] = "application/json"
+    requests.put(
+        f"{API_URL}/api/v1/transcriber/{job_id}/result",
+        headers=headers,
+        json=jsondata,
+    )
+
+    ui.notify(
+        "File saved successfully",
+        type="positive",
+        position="bottom",
+        icon="check_circle",
+    )
+
+
 def create() -> None:
     @ui.page("/srt")
     def result(uuid: str, filename: str, model: str, language: str) -> None:
@@ -635,11 +653,10 @@ def create() -> None:
                 headers=get_auth_header(),
             )
             response.raise_for_status()
+            data = response.json()
         except requests.exceptions.RequestException as e:
             ui.notify(f"Error: Failed to get result: {e}")
             return
-
-        data = response.content.decode()
 
         with ui.row().classes("justify-between items-center mb-4"):
 
@@ -652,13 +669,13 @@ def create() -> None:
                     ui.notify("No editor available", type="warning")
 
             with ui.button_group().props("outline"):
-                ui.button("Save", icon="save", on_click=export_srt).style(
-                    "width: 150px;"
-                )
-                ui.button("Export", icon="share", on_click=export_srt).style(
-                    "width: 150px;"
-                )
+                save_button = ui.button("Save", icon="save").style("width: 150px;")
+                export_button = ui.button("Export", icon="share").style("width: 150px;")
+                save_button.on("click", lambda: save_srt(uuid, editor.export_srt()))
+                export_button.on("click", lambda: export_srt())
+
         ui.separator()
+
         with ui.splitter(value=60).classes("w-full h-full") as splitter:
             with splitter.before:
                 with ui.card().classes("w-full h-full"):
@@ -666,7 +683,7 @@ def create() -> None:
                     editor.create_search_panel()
                     with ui.scroll_area().style("height: calc(100vh - 200px);"):
                         editor.main_container = ui.column().classes("w-full h-full")
-                    editor.parse_srt(data)
+                    editor.parse_srt(data["result"])
                     editor.refresh_display()
                 with splitter.after:
                     with ui.card().classes("w-full h-full"):

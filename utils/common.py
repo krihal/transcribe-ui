@@ -8,6 +8,7 @@ from utils.settings import get_settings
 from utils.token import get_auth_header
 from utils.token import get_user_info
 from utils.token import token_refresh
+from utils.token import get_admin_status
 
 settings = get_settings()
 API_URL = settings.API_URL
@@ -100,12 +101,21 @@ def page_init(header_text: Optional[str] = "") -> None:
     if header_text:
         header_text = f" - {header_text}"
 
+    is_admin = get_admin_status()
+    if is_admin:
+        header_text += " (ADMIN)"
+
     with ui.header().style(
         "background-color: #77aadb; display: flex; justify-content: space-between; align-items: center;"
     ):
         ui.label("Sunet Transcriber" + header_text).classes("text-h5 text-white")
 
         with ui.element("div").style("display: flex; gap: 0px;"):
+            if is_admin:
+                ui.button(
+                    icon="settings",
+                    on_click=lambda: ui.navigate.to("/admin"),
+                ).props("flat color=red")
             ui.button(
                 icon="home",
                 on_click=lambda: ui.navigate.to("/home"),
