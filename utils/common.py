@@ -133,10 +133,7 @@ def page_init(header_text: Optional[str] = "") -> None:
                 on_click=lambda: ui.navigate.to("/home"),
             ).props("flat color=white")
 
-            if ui.timer(30, refresh):
-                ui.notify(
-                    "Token refresh timer started", type="info", position="bottom-right"
-                )
+            ui.timer(30, refresh)
             ui.add_head_html("<style>body {background-color: #ffffff;}</style>")
 
 
