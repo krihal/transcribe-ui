@@ -11,7 +11,7 @@ from utils.settings import get_settings
 settings = get_settings()
 
 
-def token_refresh(no_redirect: Optional[bool] = False) -> None:
+def token_refresh() -> None:
     """
     Refresh the token using the refresh token.
     """
@@ -23,13 +23,11 @@ def token_refresh(no_redirect: Optional[bool] = False) -> None:
         jwt_instance = jwt.JWT()
         jwt_decoded = jwt_instance.decode(token_auth, do_verify=False)
     except Exception:
-        if not no_redirect:
-            ui.navigate.to(settings.OIDC_APP_LOGOUT_ROUTE)
-        return
+        return None
 
     # Only refresh if the token is about to expire within 20 seconds.
     if jwt_decoded["exp"] - int(time.time()) > 20:
-        return
+        return None
 
     try:
         response = requests.post(
@@ -38,12 +36,12 @@ def token_refresh(no_redirect: Optional[bool] = False) -> None:
         )
         response.raise_for_status()
     except requests.exceptions.RequestException:
-        if not no_redirect:
-            ui.navigate.to(settings.OIDC_APP_LOGOUT_ROUTE)
-        return
+        return None
 
     token = response.json().get("access_token")
     app.storage.user["token"] = token
+
+    return token
 
 
 def get_auth_header() -> dict[str, str]:
@@ -51,7 +49,6 @@ def get_auth_header() -> dict[str, str]:
     Get the authorization header for API requests.
     """
 
-    token_refresh(no_redirect=True)
     token = app.storage.user.get("token")
 
     try:
