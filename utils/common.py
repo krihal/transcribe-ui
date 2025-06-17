@@ -98,6 +98,10 @@ def page_init(header_text: Optional[str] = "") -> None:
     Initialize the page with a header and background color.
     """
 
+    def refresh():
+        if not token_refresh():
+            ui.navigate.to(settings.OIDC_APP_LOGOUT_ROUTE)
+
     if header_text:
         header_text = f" - {header_text}"
 
@@ -129,7 +133,7 @@ def page_init(header_text: Optional[str] = "") -> None:
                 on_click=lambda: ui.navigate.to("/home"),
             ).props("flat color=white")
 
-            if ui.timer(30, token_refresh):
+            if ui.timer(30, refresh):
                 ui.notify(
                     "Token refresh timer started", type="info", position="bottom-right"
                 )

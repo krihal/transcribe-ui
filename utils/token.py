@@ -3,33 +3,15 @@ import requests
 import time
 
 from nicegui import app
-from nicegui import ui
-from typing import Optional
 from utils.settings import get_settings
 
 
 settings = get_settings()
 
 
-def token_refresh() -> None:
-    """
-    Refresh the token using the refresh token.
-    """
-
-    token_auth = app.storage.user.get("token")
-    token_refresh = app.storage.user.get("refresh_token")
-
+def token_refresh_call() -> str:
     try:
-        jwt_instance = jwt.JWT()
-        jwt_decoded = jwt_instance.decode(token_auth, do_verify=False)
-    except Exception:
-        return None
-
-    # Only refresh if the token is about to expire within 20 seconds.
-    if jwt_decoded["exp"] - int(time.time()) > 20:
-        return None
-
-    try:
+        token_refresh = app.storage.user.get("refresh_token")
         response = requests.post(
             settings.OIDC_APP_REFRESH_ROUTE,
             json={"token": token_refresh},
@@ -38,10 +20,36 @@ def token_refresh() -> None:
     except requests.exceptions.RequestException:
         return None
 
-    token = response.json().get("access_token")
-    app.storage.user["token"] = token
+    return response.json().get("access_token")
 
-    return token
+
+def token_refresh() -> bool:
+    """
+    Refresh the token using the refresh token.
+    """
+
+    token_auth = app.storage.user.get("token")
+
+    try:
+        jwt_instance = jwt.JWT()
+        jwt_decoded = jwt_instance.decode(token_auth, do_verify=False)
+    except Exception:
+        token = token_refresh_call()
+        if not token:
+            return None
+        jwt_decoded = jwt_instance.decode(token, do_verify=False)
+        app.storage.user["token"] = token
+    try:
+        # Only refresh if the token is about to expire within 60 seconds.
+        if jwt_decoded["exp"] - int(time.time()) > 60:
+            return True
+
+        token = token_refresh_call()
+        app.storage.user["token"] = token
+    except requests.exceptions.RequestException:
+        return None
+
+    return True
 
 
 def get_auth_header() -> dict[str, str]:
