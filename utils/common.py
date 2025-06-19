@@ -12,7 +12,6 @@ from utils.token import get_admin_status
 
 settings = get_settings()
 API_URL = settings.API_URL
-STATIC_FILES = settings.API_STATIC_FILES
 
 jobs_columns = [
     {
@@ -290,21 +289,28 @@ def table_transcribe(table) -> None:
                 ui.label("Transcription Settings").style("width: 100%;").classes(
                     "text-h6 q-mb-md text-primary"
                 )
-
+                ui.label(
+                    "Select the language, model, and number of speakers for transcription."
+                )
                 with ui.column().classes("col-12 col-sm-24"):
                     ui.label("Language").classes("text-subtitle2 q-mb-sm")
                     language = ui.select(
-                        ["Swedish", "English"],
+                        settings.WHISPER_LANGUAGES,
                         label="Select language",
                     ).classes("w-full")
 
                 with ui.column().classes("col-12 col-sm-24"):
                     ui.label("Model").classes("text-subtitle2 q-mb-sm")
                     model = ui.select(
-                        ["Tiny", "Base", "Large"],
+                        settings.WHISPER_MODELS,
                         label="Select model",
                     ).classes("w-full")
-            ui.separator()
+                # Number of speakers
+                with ui.column().classes("col-12 col-sm-24"):
+                    ui.label("Number of speakers (0 for automatic)").classes(
+                        "text-subtitle2 q-mb-sm"
+                    )
+                    speakers = ui.number(value="0").classes("w-full")
             with ui.row():
                 ui.button(
                     "Start",
@@ -313,6 +319,7 @@ def table_transcribe(table) -> None:
                         selected_rows,
                         language.value,
                         model.value,
+                        speakers.value,
                         dialog,
                     ),
                 ).props("color=primary")
@@ -325,41 +332,12 @@ def table_transcribe(table) -> None:
 
 
 def start_transcription(
-    rows: list, language: str, model: str, dialog: ui.dialog
+    rows: list, language: str, model: str, speakers: str, dialog: ui.dialog
 ) -> None:
     # Get selected values
     selected_language = language
     selected_model = model
 
-    match selected_language:
-        case "Swedish":
-            selected_language = "sv"
-        case "English":
-            selected_language = "en"
-        case _:
-            ui.notify(
-                "Error: Unsupported language",
-                type="negative",
-                position="top",
-            )
-            return
-
-    match selected_model:
-        case "Tiny":
-            selected_model = "tiny"
-        case "Base":
-            selected_model = "base"
-        case "Large":
-            selected_model = "large"
-        case _:
-            ui.notify(
-                "Error: Unsupported model",
-                type="negative",
-                position="top",
-            )
-            return
-
-    # Start the transcription job
     try:
         for row in rows:
             uuid = row["uuid"]
@@ -370,6 +348,7 @@ def start_transcription(
                     json={
                         "language": f"{selected_language}",
                         "model": f"{selected_model}",
+                        "speakers": int(speakers),
                         "status": "pending",
                     },
                     headers=get_auth_header(),

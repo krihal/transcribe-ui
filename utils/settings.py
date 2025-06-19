@@ -15,12 +15,15 @@ class Settings(BaseSettings):
         enable_decoding=False,
     )
 
-    API_DEBUG: bool = True
-    API_STATIC_FILES: str = ""
     API_URL: str = ""
     OIDC_APP_LOGIN_ROUTE: str = ""
     OIDC_APP_LOGOUT_ROUTE: str = ""
     OIDC_APP_REFRESH_ROUTE: str = ""
+
+    WHISPER_MODELS: list[str] = ["Tiny", "Base", "Small", "Medium", "Large"]
+    WHISPER_LANGUAGES: list[str] = ["Swedish", "English", "Finnish", "Danish"]
+
+
 @lru_cache
 def get_settings() -> Settings:
     """
