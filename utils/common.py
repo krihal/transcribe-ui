@@ -148,7 +148,6 @@ def jobs_get() -> list:
         )
         response.raise_for_status()
     except requests.exceptions.RequestException:
-        ui.notify("Error: Can not connect to backend.", type="negative", position="top")
         return []
 
     for idx, job in enumerate(response.json()["result"]["jobs"]):
