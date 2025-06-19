@@ -192,21 +192,36 @@ def table_click(event) -> None:
         with ui.card().style(
             "background-color: white; align-self: center; border: 0; width: 100%;"
         ):
-            ui.label("Select format to edit").classes("text-h6 q-mb-md text-primary")
-            ui.button(
-                "TXT",
-                icon="text_fields",
-                on_click=lambda: ui.navigate.to(
-                    f"/txt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
-                ),
-            ).props("color=primary").classes("w-1/2").style("align-self: center;")
-            ui.button(
-                "SRT",
-                icon="subtitles",
-                on_click=lambda: ui.navigate.to(
-                    f"/srt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
-                ),
-            ).props("color=primary").classes("w-1/2").style("align-self: center;")
+            # Information about the transcription
+            ui.label(f"Transcription for {filename}").classes(
+                "text-h6 q-mb-md text-primary"
+            )
+            ui.label(f"UUID: {uuid}")
+            ui.label(f"Model: {model_type}")
+            ui.label(f"Language: {language}")
+            ui.label("Status: Completed")
+            ui.label("Select the format to edit the transcription.").classes(
+                "text-subtitle2 q-mb-md"
+            )
+            with ui.row().classes("justify-end"):
+                ui.button(
+                    "TXT",
+                    icon="text_fields",
+                    on_click=lambda: ui.navigate.to(
+                        f"/txt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
+                    ),
+                ).props("color=primary")
+                ui.button(
+                    "SRT",
+                    icon="subtitles",
+                    on_click=lambda: ui.navigate.to(
+                        f"/srt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
+                    ),
+                ).props("color=primary")
+                ui.button(
+                    "Close",
+                    icon="cancel",
+                ).on("click", lambda: dialog.close())
         dialog.open()
 
 
