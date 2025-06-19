@@ -26,9 +26,18 @@ def create() -> None:
             pagination=10,
         )
 
+        ui.add_head_html(
+            """
+            <style>
+                .table-style td {
+                    background: #eeeeee;
+                }
+            </style>
+        """
+        )
         table.style("width: 100%; height: calc(100vh - 130px); box-shadow: none;")
         table.on("rowClick", table_click)
-        table.classes("text-h2")
+        table.classes("text-h2 table-style")
         table.add_slot(
             "body-cell-status",
             """
