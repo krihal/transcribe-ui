@@ -21,7 +21,13 @@ class Settings(BaseSettings):
     OIDC_APP_REFRESH_ROUTE: str = ""
 
     WHISPER_MODELS: list[str] = ["Tiny", "Base", "Small", "Medium", "Large"]
-    WHISPER_LANGUAGES: list[str] = ["Swedish", "English", "Finnish", "Danish"]
+    WHISPER_LANGUAGES: list[str] = [
+        "Swedish",
+        "English",
+        "Finnish",
+        "Danish",
+        "Norwegian",
+    ]
 
 
 @lru_cache
