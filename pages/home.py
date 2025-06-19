@@ -6,6 +6,7 @@ from utils.common import (
     table_click,
     table_transcribe,
     table_upload,
+    table_delete,
 )
 
 
@@ -60,20 +61,21 @@ def create() -> None:
 
         with table.add_slot("top-right"):
             with ui.row().classes("items-center"):
+                with ui.button("Upload", icon="upload") as upload:
+                    upload.props("color=primary flat")
+                    upload.on("click", lambda: table_upload(table))
+                with ui.button("Transcribe", icon="play_circle") as transcribe:
+                    transcribe.props("color=primary flat")
+                    transcribe.on(
+                        "click", lambda: table_transcribe(table), table.selected
+                    )
+                with ui.button("Delete", icon="delete") as refresh:
+                    refresh.props("color=primary flat")
+                    refresh.on("click", lambda: table_delete(table.selected))
                 with ui.input(placeholder="Search").props("type=search").bind_value(
                     table, "filter"
                 ).add_slot("append"):
                     ui.icon("search")
-                with ui.button("Upload") as upload:
-                    upload.props("color=primary")
-                    upload.on("click", lambda: table_upload(table))
-                    ui.icon("upload")
-                with ui.button("Transcribe") as transcribe:
-                    transcribe.props("color=primary")
-                    transcribe.on(
-                        "click", lambda: table_transcribe(table), table.selected
-                    )
-                    ui.icon("play_circle_filled")
 
         def update_rows():
             """

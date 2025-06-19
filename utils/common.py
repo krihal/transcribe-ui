@@ -331,6 +331,55 @@ def table_transcribe(table) -> None:
         dialog.open()
 
 
+def table_delete(selected_rows: list) -> None:
+    """
+    Handle the click event on the Delete button.
+    """
+
+    if not selected_rows:
+        ui.notify("Error: No files selected", type="negative", position="top")
+        return
+
+    with ui.dialog() as dialog:
+        with ui.card().style(
+            "background-color: white; align-self: center; border: 0; width: 100%;"
+        ):
+            ui.label("Are you sure you want to delete the selected files?").classes(
+                "text-h6 q-mb-md text-primary"
+            )
+            with ui.row().classes("justify-end"):
+                ui.button(
+                    "Delete",
+                    icon="delete",
+                    on_click=lambda: __delete_files(selected_rows, dialog),
+                ).props("color=negative")
+                ui.button(
+                    "Cancel",
+                    icon="cancel",
+                ).on("click", lambda: dialog.close())
+
+        dialog.open()
+
+
+def __delete_files(rows: list, dialog: ui.dialog) -> bool:
+    try:
+        for row in rows:
+            uuid = row["uuid"]
+            response = requests.delete(
+                f"{API_URL}/api/v1/transcriber/{uuid}",
+                headers=get_auth_header(),
+            )
+            response.raise_for_status()
+        ui.notify("Files deleted successfully", type="positive", position="top")
+    except requests.exceptions.RequestException as e:
+        ui.notify(
+            f"Error: Failed to delete files: {str(e)}", type="negative", position="top"
+        )
+        return False
+
+    dialog.close()
+
+
 def start_transcription(
     rows: list, language: str, model: str, speakers: str, dialog: ui.dialog
 ) -> None:
