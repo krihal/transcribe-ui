@@ -23,13 +23,13 @@ jobs_columns = [
     },
     {
         "name": "created_at",
-        "label": "Created At",
+        "label": "Created",
         "field": "created_at",
         "align": "left",
     },
     {
         "name": "created_at",
-        "label": "Updated At",
+        "label": "Updated",
         "field": "updated_at",
         "align": "left",
     },
