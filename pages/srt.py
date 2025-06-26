@@ -82,6 +82,41 @@ class SRTEditor:
         self.search_container = None
         self.__video_player = None
         self.autoscroll = False
+        self.words_per_minute_element = None
+
+    def set_words_per_minute_element(self, element) -> None:
+        """
+        Set the element to display words per minute.
+        """
+
+        self.words_per_minute_element = element
+
+    def update_words_per_minute(self) -> None:
+        """
+        Update the words per minute display.
+        """
+
+        if self.words_per_minute_element:
+            wpm = self.get_words_per_minute()
+            self.words_per_minute_element.set_content(
+                f"<b>Words per minute:</b> {wpm:.2f}"
+            )
+
+    def get_words_per_minute(self) -> float:
+        """
+        Calculate the average words per minute based on caption text.
+        """
+
+        total_words = sum(len(caption.text.split()) for caption in self.captions)
+        total_seconds = sum(
+            caption.get_end_seconds() - caption.get_start_seconds()
+            for caption in self.captions
+        )
+
+        if total_seconds == 0:
+            return 0.0
+
+        return (total_words / total_seconds) * 60.0
 
     def set_video_player(self, player) -> None:
         """
@@ -130,6 +165,19 @@ class SRTEditor:
         """
 
         return "\n\n".join(caption.to_srt_format() for caption in self.captions)
+
+    def export_vtt(self) -> str:
+        """
+        Export captions to VTT format.
+        """
+
+        vtt_content = "WEBVTT\n\n"
+        for caption in self.captions:
+            vtt_content += f"{caption.index}\n"
+            vtt_content += f"{caption.start_time.replace(',', '.')} --> {caption.end_time.replace(',', '.')}\n"
+            vtt_content += f"{caption.text}\n\n"
+
+        return vtt_content
 
     def renumber_captions(self) -> None:
         """
@@ -344,6 +392,7 @@ class SRTEditor:
         self.captions.insert(caption_index + 1, new_caption)
 
         self.renumber_captions()
+        self.update_words_per_minute()
         self.refresh_display()
 
     def add_caption_after(self, caption: SRTCaption) -> None:
@@ -375,6 +424,7 @@ class SRTEditor:
 
         self.renumber_captions()
         self.refresh_display()
+        self.update_words_per_minute()
 
     def remove_caption(self, caption: SRTCaption) -> None:
         """
@@ -387,6 +437,8 @@ class SRTEditor:
             self.refresh_display()
         else:
             ui.notify("Cannot remove the only remaining caption", type="warning")
+
+        self.update_words_per_minute()
 
     def select_caption(self, caption: SRTCaption) -> None:
         """
@@ -407,6 +459,7 @@ class SRTEditor:
                 start_seconds = caption.get_start_seconds()
                 self.__video_player.seek(start_seconds)
 
+        self.update_words_per_minute()
         self.refresh_display()
 
     def update_caption_text(self, caption: SRTCaption, new_text: str) -> None:
@@ -415,7 +468,7 @@ class SRTEditor:
         """
 
         caption.text = new_text
-        self.refresh_display()
+        # self.refresh_display()
 
     def update_caption_timing(
         self, caption: SRTCaption, start_time: str, end_time: str
@@ -426,6 +479,7 @@ class SRTEditor:
 
         caption.start_time = start_time
         caption.end_time = end_time
+
         self.refresh_display()
 
     def create_search_panel(self) -> None:
@@ -564,13 +618,18 @@ class SRTEditor:
                         .props("outlined dense")
                     )
 
-                def update_timing():
-                    self.update_caption_timing(
+                start_input.on(
+                    "blur",
+                    lambda: self.update_caption_timing(
                         caption, start_input.value, end_input.value
-                    )
-
-                start_input.on("blur", lambda: update_timing())
-                end_input.on("blur", lambda: update_timing())
+                    ),
+                )
+                end_input.on(
+                    "blur",
+                    lambda: self.update_caption_timing(
+                        caption, start_input.value, end_input.value
+                    ),
+                )
 
                 # Action buttons
                 with ui.row().classes("w-full gap-2 mt-3"):
@@ -620,8 +679,67 @@ class SRTEditor:
                     for caption in self.captions:
                         self.create_caption_card(caption)
 
+    def validate_captions(self):
+        """
+        Validate captions for overlapping times and empty text.
+        """
+        errors = []
+        seen_times = set()
+        start_times = {}
 
-def save_srt(job_id: str, data: str) -> None:
+        for caption in self.captions:
+            if not caption.text.strip():
+                errors.append(f"Caption #{caption.index} has no text.")
+            if (caption.start_time, caption.end_time) in seen_times:
+                errors.append(
+                    f"Caption #{caption.index} overlaps with another caption."
+                )
+
+            seen_times.add((caption.start_time, caption.end_time))
+
+            if caption.start_time in start_times:
+                start_times[caption.start_time].append(caption.index)
+            else:
+                start_times[caption.start_time] = [caption.index]
+
+            if caption.get_end_seconds() < caption.get_start_seconds():
+                errors.append(
+                    f"Caption #{caption.index} has end time before start time."
+                )
+
+        # Check for overlapping times
+        for i in range(len(self.captions) - 1):
+            current = self.captions[i]
+            next_caption = self.captions[i + 1]
+
+            if current.get_end_seconds() > next_caption.get_start_seconds():
+                errors.append(
+                    f"Caption #{current.index} overlaps with caption #{next_caption.index}."
+                )
+
+        # Find start times with multiple captions
+        for start_time, indices in start_times.items():
+            if len(indices) > 1:
+                errors.append(
+                    f"Multiple captions start at the same time: {', '.join(map(str, indices))}."
+                )
+
+        with ui.dialog() as dialog:
+            with ui.card().style(
+                "background-color: white; align-self: center; border: 0; width: 100%;"
+            ):
+                if errors:
+                    ui.label(
+                        "The following issues were found with the captions:"
+                    ).classes("text-bold")
+                    ui.html("<br>".join(errors)).classes("text-red-600")
+                else:
+                    ui.label("All captions are valid!").classes("text-green-600")
+                ui.button("Close", on_click=dialog.close).props("color=primary flat")
+            dialog.open()
+
+
+def save_srt(job_id: str, data: str, editor: SRTEditor) -> None:
     jsondata = {"format": "srt", "data": data}
     headers = get_auth_header()
     headers["Content-Type"] = "application/json"
@@ -658,21 +776,44 @@ def create() -> None:
             ui.notify(f"Error: Failed to get result: {e}")
             return
 
-        with ui.row().classes("justify-between items-center mb-4"):
+        with ui.row():
 
-            def export_srt():
-                if "editor" in locals():
+            def export(srt_format: str):
+                if srt_format == "srt":
                     srt_content = editor.export_srt()
-                    ui.download(srt_content.encode(), filename=f"{filename}.srt")
-                    ui.notify("SRT file exported successfully", type="positive")
-                else:
-                    ui.notify("No editor available", type="warning")
+                elif srt_format == "vtt":
+                    srt_content = editor.export_vtt()
 
-            with ui.button_group().props("outline"):
-                save_button = ui.button("Save", icon="save").style("width: 150px;")
-                export_button = ui.button("Export", icon="share").style("width: 150px;")
-                save_button.on("click", lambda: save_srt(uuid, editor.export_srt()))
-                export_button.on("click", lambda: export_srt())
+                ui.download(srt_content.encode(), filename=f"{filename}.{srt_format}")
+                ui.notify("File exported successfully", type="positive")
+
+            with ui.button("Save", icon="save").style("width: 150px;") as save_button:
+                save_button.on(
+                    "click",
+                    lambda: save_srt(uuid, editor.export_srt(), html_wpm, editor),
+                )
+                save_button.props("color=primary flat")
+
+            with ui.dropdown_button("Export", icon="share").props("color=primary flat"):
+                export_button_srt = ui.button("Export as SRT", icon="share").style(
+                    "width: 150px;"
+                )
+                export_button_srt.props("color=primary flat")
+                export_button_srt.on("click", lambda: export("srt"))
+
+                export_button_vtt = ui.button("Export as VTT", icon="share").style(
+                    "width: 150px;"
+                )
+                export_button_vtt.props("color=primary flat")
+                export_button_vtt.on("click", lambda: export("vtt"))
+
+            with ui.button("Validate", icon="check").props(
+                "color=primary flat"
+            ) as validate_button:
+                validate_button.on(
+                    "click",
+                    lambda: editor.validate_captions(),
+                )
 
         ui.separator()
 
@@ -705,3 +846,7 @@ def create() -> None:
                         ui.html(f"<b>Filename:</b> {filename}").classes("text-sm")
                         ui.html(f"<b>Language:</b> {language}").classes("text-sm")
                         ui.html(f"<b>Model:</b> {model}").classes("text-sm")
+                        html_wpm = ui.html(
+                            f"<b>Words per minute:</b> {editor.get_words_per_minute():.2f}"
+                        ).classes("text-sm")
+                        editor.set_words_per_minute_element(html_wpm)
