@@ -34,6 +34,12 @@ jobs_columns = [
         "align": "left",
     },
     {
+        "name": "deletetion_date",
+        "label": "Deletion date",
+        "field": "deletion_date",
+        "align": "left",
+    },
+    {
         "name": "model_type",
         "label": "Model",
         "field": "model_type",
@@ -108,9 +114,7 @@ def page_init(header_text: Optional[str] = "") -> None:
     if is_admin:
         header_text += " (ADMIN)"
 
-    with ui.header().style(
-        "background-color: #77aadb; display: flex; justify-content: space-between; align-items: center;"
-    ):
+    with ui.header().style("justify-content: space-between;"):
         ui.label("Sunet Transcriber" + header_text).classes("text-h5 text-white")
 
         with ui.element("div").style("display: flex; gap: 0px;"):
@@ -154,12 +158,21 @@ def jobs_get() -> list:
         if job["status"] == "in_progress":
             job["status"] = "transcribing"
 
+        # Conert job["deletion_date"] to a more readable format
+        deletion_date = job["deletion_date"]
+
+        if deletion_date:
+            deletion_date = deletion_date.split(" ")[0]
+        else:
+            deletion_date = "N/A"
+
         job_data = {
             "id": idx,
             "uuid": job["uuid"],
             "filename": job["filename"],
             "created_at": job["created_at"],
             "updated_at": job["updated_at"],
+            "deletion_date": deletion_date,
             "language": job["language"].capitalize(),
             "status": job["status"].capitalize(),
             "model_type": job["model_type"].capitalize(),
