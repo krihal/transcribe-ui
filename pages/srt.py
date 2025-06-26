@@ -790,7 +790,7 @@ def create() -> None:
             with ui.button("Save", icon="save").style("width: 150px;") as save_button:
                 save_button.on(
                     "click",
-                    lambda: save_srt(uuid, editor.export_srt(), html_wpm, editor),
+                    lambda: save_srt(uuid, editor.export_srt(), editor),
                 )
                 save_button.props("color=primary flat")
 
