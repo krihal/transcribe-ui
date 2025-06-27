@@ -376,9 +376,7 @@ def table_transcribe(table) -> None:
     """
     Handle the click event on the Transcribe button.
     """
-
     selected_rows = table.selected
-
     with ui.dialog() as dialog:
         with ui.card().style(
             "background-color: white; align-self: center; border: 0;"
@@ -403,12 +401,39 @@ def table_transcribe(table) -> None:
                         settings.WHISPER_MODELS,
                         label="Select model",
                     ).classes("w-full")
-                # Number of speakers
+
+                    with ui.expansion("Model Size Information", icon="info").classes(
+                        "w-full q-mt-sm"
+                    ):
+                        with ui.column().classes("q-pa-sm"):
+                            ui.html(
+                                """
+                                <div style="font-size: 14px; line-height: 1.5;">
+                                    <p><strong>Model sizes and performance:</strong></p>
+                                    <ul style="margin: 8px 0; padding-left: 20px;">
+                                        <li><strong>tiny:</strong> Fastest processing, lowest accuracy. Good for quick drafts or low-quality audio.</li>
+                                        <li><strong>base:</strong> Balanced speed and accuracy. Suitable for most general use cases.</li>
+                                        <li><strong>small:</strong> Better accuracy than base, moderate processing time. Good for important transcriptions.</li>
+                                        <li><strong>medium:</strong> High accuracy, longer processing time. Recommended for professional work.</li>
+                                        <li><strong>large:</strong> Highest accuracy, longest processing time. Best for critical transcriptions requiring maximum precision.</li>
+                                    </ul>
+                                    <p style="margin-top: 12px; color: #666; font-style: italic;">
+                                        💡 <strong>Tip:</strong> Larger models provide significantly better results but will take considerably longer to process.
+                                        Choose based on your quality requirements and available time.
+                                    </p>
+                                </div>
+                            """
+                            )
+
                 with ui.column().classes("col-12 col-sm-24"):
                     ui.label("Number of speakers (0 for automatic)").classes(
                         "text-subtitle2 q-mb-sm"
                     )
                     speakers = ui.number(value="0").classes("w-full")
+                    ui.label(
+                        "Set to 0 for automatic speaker detection, or specify the exact number if known"
+                    ).classes("text-caption text-grey-6 q-mt-xs")
+
             with ui.row():
                 ui.button(
                     "Start",
@@ -425,7 +450,6 @@ def table_transcribe(table) -> None:
                     "Cancel",
                     icon="cancel",
                 ).on("click", lambda: dialog.close())
-
         dialog.open()
 
 

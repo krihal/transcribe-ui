@@ -65,23 +65,21 @@ def create() -> None:
 
         with table.add_slot("top-right"):
             with ui.row().classes("items-center"):
+                with ui.input(placeholder="Search").props("type=search").bind_value(
+                    table, "filter"
+                ).add_slot("append"):
+                    ui.icon("search")
                 with ui.button("Upload", icon="upload") as upload:
                     upload.props("color=primary flat")
                     upload.on("click", lambda: table_upload(table))
                 with ui.button("Transcribe", icon="play_circle") as transcribe:
                     transcribe.props("color=primary flat")
-                    transcribe.on(
-                        "click", lambda: table_transcribe(table), table.selected
-                    )
+                    transcribe.on("click", lambda: table_transcribe(table))
                     transcribe.set_enabled(False)
                 with ui.button("Delete", icon="delete") as delete:
                     delete.props("color=primary flat")
                     delete.on("click", lambda: table_delete(table.selected))
                     delete.set_enabled(False)
-                with ui.input(placeholder="Search").props("type=search").bind_value(
-                    table, "filter"
-                ).add_slot("append"):
-                    ui.icon("search")
 
         def update_rows():
             """
