@@ -271,7 +271,6 @@ def table_upload(table) -> None:
         with ui.card().style(
             "background-color: white; align-self: center; border: 0; width: 90%; max-width: 600px; min-height: 400px; padding: 24px;"
         ):
-            # Header section
             with ui.row().style(
                 "width: 100%; margin-bottom: 20px; align-items: center;"
             ):
@@ -282,7 +281,6 @@ def table_upload(table) -> None:
                     "font-size: 1.5em; font-weight: 600; color: #333;"
                 )
 
-            # Instructions section
             with ui.card().style(
                 "background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 16px; margin-bottom: 20px; width: 100%;"
             ):
@@ -301,9 +299,8 @@ def table_upload(table) -> None:
                     ).style("color: #6c757d;")
                     ui.label(
                         "• When files are selected, click the button to the right of the upload button."
-                    ).style("font-size: 0.9em; color: #6c757d; margin-top: 8px;")
+                    ).style("color: #6c757d;")
 
-            # Upload area
             with ui.upload(
                 on_multi_upload=lambda files: handle_upload_with_feedback(
                     files, dialog, upload_progress, status_label, upload
