@@ -19,7 +19,15 @@ def create() -> None:
         """
         page_init()
 
+        def toggle_buttons(selected: list) -> None:
+            """
+            Toggle the state of buttons based on selected rows.
+            """
+            delete.set_enabled(bool(selected))
+            transcribe.set_enabled(bool(selected))
+
         table = ui.table(
+            on_select=lambda e: toggle_buttons(e.selection),
             columns=jobs_columns,
             rows=jobs_get(),
             selection="multiple",
@@ -65,9 +73,11 @@ def create() -> None:
                     transcribe.on(
                         "click", lambda: table_transcribe(table), table.selected
                     )
+                    transcribe.set_enabled(False)
                 with ui.button("Delete", icon="delete") as delete:
                     delete.props("color=primary flat")
                     delete.on("click", lambda: table_delete(table.selected))
+                    delete.set_enabled(False)
                 with ui.input(placeholder="Search").props("type=search").bind_value(
                     table, "filter"
                 ).add_slot("append"):
@@ -79,11 +89,13 @@ def create() -> None:
             """
             rows = jobs_get()
 
+            if not rows:
+                delete.set_enabled(False)
+                transcribe.set_enabled(False)
+
             upload.props("color=green flat") if not rows else upload.props(
                 "color=primary flat"
             )
-            transcribe.enabled = bool(rows)
-            delete.enabled = bool(rows)
             table.selection = "multiple" if rows else "none"
             table.update_rows(rows, clear_selection=False)
 

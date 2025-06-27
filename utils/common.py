@@ -434,10 +434,6 @@ def table_delete(selected_rows: list) -> None:
     Handle the click event on the Delete button.
     """
 
-    if not selected_rows:
-        ui.notify("Error: No files selected", type="negative", position="top")
-        return
-
     with ui.dialog() as dialog:
         with ui.card().style(
             "background-color: white; align-self: center; border: 0; width: 100%;"
@@ -445,6 +441,7 @@ def table_delete(selected_rows: list) -> None:
             ui.label("Are you sure you want to delete the selected files?").classes(
                 "text-h6 q-mb-md text-primary"
             )
+            ui.separator()
             with ui.row().classes("justify-end"):
                 ui.button(
                     "Delete",
