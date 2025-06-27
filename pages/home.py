@@ -51,19 +51,6 @@ def create() -> None:
             </q-td>
             """,
         )
-        table.add_slot(
-            "body-cell-format",
-            """
-            <q-td key="format" :props="props">
-                <q-badge v-if="{SRT: 'blue', TXT: 'grey'}[props.value]" :color="{SRT: 'blue', TXT: 'grey'}[props.value]">
-                    {{props.value}}
-                </q-badge>
-                <p v-else>
-                    {{props.value}}
-                </p>
-            </q-td>
-            """,
-        )
 
         with table.add_slot("top-left"):
             ui.label("My files").classes("text-h5")
@@ -78,9 +65,9 @@ def create() -> None:
                     transcribe.on(
                         "click", lambda: table_transcribe(table), table.selected
                     )
-                with ui.button("Delete", icon="delete") as refresh:
-                    refresh.props("color=primary flat")
-                    refresh.on("click", lambda: table_delete(table.selected))
+                with ui.button("Delete", icon="delete") as delete:
+                    delete.props("color=primary flat")
+                    delete.on("click", lambda: table_delete(table.selected))
                 with ui.input(placeholder="Search").props("type=search").bind_value(
                     table, "filter"
                 ).add_slot("append"):
@@ -90,6 +77,14 @@ def create() -> None:
             """
             Update the rows in the table.
             """
-            table.update_rows(jobs_get(), clear_selection=False)
+            rows = jobs_get()
+
+            upload.props("color=green flat") if not rows else upload.props(
+                "color=primary flat"
+            )
+            transcribe.enabled = bool(rows)
+            delete.enabled = bool(rows)
+            table.selection = "multiple" if rows else "none"
+            table.update_rows(rows, clear_selection=False)
 
         ui.timer(5.0, lambda: update_rows())

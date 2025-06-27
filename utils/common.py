@@ -9,6 +9,11 @@ from utils.token import get_auth_header
 from utils.token import get_user_info
 from utils.token import token_refresh
 from utils.token import get_admin_status
+from starlette.formparsers import MultiPartParser
+
+
+MultiPartParser.spool_max_size = 1024 * 1024 * 4096
+
 
 settings = get_settings()
 API_URL = settings.API_URL
@@ -258,43 +263,116 @@ def post_file(file: str, filename: str) -> None:
     return True
 
 
-async def upload_file(files) -> None:
-    """
-    Upload a file to the server.
-    """
-    try:
-        for file, filename in zip(files.contents, files.names):
-            await asyncio.to_thread(post_file, file, filename)
-            ui.notify(f"Uploaded: {filename}", position="top")
-    except Exception as e:
-        ui.notify(f"Error: Failed to save file {filename}: {e}")
-        return
-
-
 def table_upload(table) -> None:
     """
-    Handle the click event on the Upload button.
+    Handle the click event on the Upload button with improved UX.
     """
     with ui.dialog() as dialog:
         with ui.card().style(
-            "background-color: white; align-self: center; border: 0; width: 100%; height: 30%;"
+            "background-color: white; align-self: center; border: 0; width: 90%; max-width: 600px; min-height: 400px; padding: 24px;"
         ):
-            ui.upload(
-                on_multi_upload=lambda file: upload_file(file),
+            # Header section
+            with ui.row().style(
+                "width: 100%; margin-bottom: 20px; align-items: center;"
+            ):
+                ui.icon("cloud_upload", size="2em").style(
+                    "color: #1976d2; margin-right: 12px;"
+                )
+                ui.label("Upload Media Files").style(
+                    "font-size: 1.5em; font-weight: 600; color: #333;"
+                )
+
+            # Instructions section
+            with ui.card().style(
+                "background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 16px; margin-bottom: 20px; width: 100%;"
+            ):
+                ui.label("How to upload:").style(
+                    "font-weight: 600; margin-bottom: 8px; color: #495057;"
+                )
+                with ui.column().style("gap: 4px;"):
+                    ui.label(
+                        "• Click the '+' in the upload area below or drag and drop files"
+                    ).style("color: #6c757d;")
+                    ui.label("• You can select up to 5 files at once").style(
+                        "color: #6c757d;"
+                    )
+                    ui.label(
+                        "• Supported formats: MP3, WAV, FLAC, MP4, MKV, AVI"
+                    ).style("color: #6c757d;")
+                    ui.label(
+                        "• When files are selected, click the button to the right of the upload button."
+                    ).style("font-size: 0.9em; color: #6c757d; margin-top: 8px;")
+
+            # Upload area
+            with ui.upload(
+                on_multi_upload=lambda files: handle_upload_with_feedback(
+                    files, dialog, upload_progress, status_label, upload
+                ),
                 multiple=True,
                 max_files=5,
-                label="Upload file",
-            ).style(
-                "width: 100%; align-self: center; border-radius: 10px; height: 100%;"
+                label="",
+            ) as upload:
+                upload.style(
+                    "width: 100%; min-height: 200px; border: 2px; border-radius: 12px; "
+                    "background-color: #fafafa; transition: all 0.3s ease;"
+                )
+                upload.props("accept=.mp3,.wav,.flac,.mp4,.mkv,.avi")
+
+            upload_progress = ui.linear_progress(value=0).style(
+                "margin-top: 16px; display: none;"
             )
-            ui.separator()
-            ui.button(
-                "Done",
-                icon="check_circle",
-                on_click=lambda: dialog.close(),
-            ).props("color=primary").style("margin-left: 10px; margin-bottom: 10px;")
+
+            status_label = ui.label("").style("margin-top: 8px; display: none;")
+            ui.separator().style("margin: 24px 0;")
+
+            with ui.row().style("justify-content: flex-end; gap: 12px;"):
+                ui.button(
+                    "Cancel",
+                    icon="close",
+                    on_click=lambda: dialog.close(),
+                ).props("color=grey-7 flat").style("padding: 8px 16px;")
+
+                ui.button(
+                    "Done",
+                    icon="check",
+                    on_click=lambda: dialog.close(),
+                ).props(
+                    "color=primary"
+                ).style("padding: 8px 16px;")
 
         dialog.open()
+
+
+async def handle_upload_with_feedback(
+    files, dialog, upload_progress, status_label, upload
+):
+    """
+    Handle file uploads with user feedback and validation.
+    """
+    upload.visible = False
+    upload_progress.style("display: block;")
+    status_label.style("display: block;")
+    total_files = len(files.names)
+    i = 0
+
+    for file, name in zip(files.contents, files.names):
+        progress = (i + 1) / total_files
+        status_label.set_text(f"Processing {name}... ({i + 1}/{total_files})")
+
+        try:
+            await asyncio.to_thread(post_file, file, name)
+
+            ui.notify(f"Successfully uploaded {name}", type="positive", timeout=3000)
+        except Exception as e:
+            ui.notify(
+                f"Failed to upload {name}: {str(e)}", type="negative", timeout=5000
+            )
+
+        upload_progress.set_value(progress)
+        i += 1
+
+    status_label.set_text("Upload complete!")
+    dialog.close()
 
 
 def table_transcribe(table) -> None:
@@ -303,10 +381,6 @@ def table_transcribe(table) -> None:
     """
 
     selected_rows = table.selected
-
-    if not selected_rows:
-        ui.notify("Error: No files selected", type="negative", position="top")
-        return
 
     with ui.dialog() as dialog:
         with ui.card().style(

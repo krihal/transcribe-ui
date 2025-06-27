@@ -205,9 +205,8 @@ class TranscriptEditor:
                         speaker_select = ui.select(
                             options=list(self.speakers),
                             value=segment.speaker,
-                            label="Speaker",
                             with_input=True,
-                        )
+                        ).style("font-family: verdana; font-size: 10px;")
                         speaker_select.on_value_change(
                             lambda e, idx=index: self.update_segment(
                                 idx, speaker=e.value
@@ -221,7 +220,7 @@ class TranscriptEditor:
 
                     text_editor = (
                         ui.editor(value=segment.text, placeholder="Enter text...")
-                        .style("font-family: monospace; border: 0; width: 100%;")
+                        .style("font-family: verdana; border: 0; width: 100%;")
                         .props("min-height=0")
                         .classes(segment_class)
                     )
