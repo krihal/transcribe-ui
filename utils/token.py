@@ -97,9 +97,9 @@ def get_user_info() -> tuple[str, int] | None:
     return username, lifetime
 
 
-def get_admin_status() -> bool:
+def get_user_data() -> dict:
     """
-    Check if the user is an admin based on the token.
+    Get user data.
     """
 
     try:
@@ -109,9 +109,15 @@ def get_admin_status() -> bool:
         response.raise_for_status()
         data = response.json()
 
-        return data["result"]["admin"]
+        return data["result"]
 
     except requests.exceptions.RequestException:
-        return False
+        return None
 
-    return True
+
+def get_admin_status() -> bool:
+    """
+    Check if the user is an admin based on the token.
+    """
+
+    return get_user_data()

@@ -7,6 +7,7 @@ from typing import Optional
 from utils.settings import get_settings
 from utils.token import get_auth_header
 from utils.token import get_user_info
+from utils.token import get_user_data
 from utils.token import token_refresh
 from utils.token import get_admin_status
 from starlette.formparsers import MultiPartParser
@@ -74,35 +75,6 @@ def logout() -> None:
     ui.navigate.to(settings.OIDC_APP_LOGOUT_ROUTE)
 
 
-def show_userinfo() -> None:
-    """
-    Show a dialog with user information and a logout button.
-    """
-    username, lifetime = get_user_info()
-
-    with ui.dialog() as dialog:
-        with ui.card().style("width: 50%; align-self: center; margin-top: 10%;"):
-            ui.label("User Information").classes("text-h5")
-            ui.separator()
-
-            with ui.row().style("align-items: center; justify-content: center;"):
-                with ui.column().classes("col-12 col-sm-6"):
-                    ui.label(f"Username: {username}")
-                with ui.column().classes("col-12 col-sm-6"):
-                    ui.label(f"Token expires in {lifetime} seconds")
-
-            ui.separator()
-            ui.button(
-                "Logout",
-                icon="logout",
-                on_click=lambda: logout(),
-            ).props(
-                "color=primary"
-            ).style("margin-left: 10px;")
-
-    dialog.open()
-
-
 def page_init(header_text: Optional[str] = "") -> None:
     """
     Initialize the page with a header and background color.
@@ -134,7 +106,7 @@ def page_init(header_text: Optional[str] = "") -> None:
             ).props("flat color=white")
             ui.button(
                 icon="person",
-                on_click=lambda: show_userinfo(),
+                on_click=lambda: ui.navigate.to("/user"),
             ).props("flat color=white")
             ui.button(
                 icon="help",
@@ -403,7 +375,7 @@ def table_transcribe(table) -> None:
                     ).classes("w-full")
 
                     with ui.expansion("Model Size Information", icon="info").classes(
-                        "w-full q-mt-sm"
+                        "w-full"
                     ):
                         with ui.column().classes("q-pa-sm"):
                             ui.html(
