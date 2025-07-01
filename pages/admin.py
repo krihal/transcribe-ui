@@ -25,7 +25,9 @@ def get_statistics() -> dict:
 
 
 def format_seconds_to_duration(seconds: int) -> str:
-    """Convert seconds to human readable duration."""
+    """
+    Convert seconds to human readable duration.
+    """
     if seconds == 0:
         return "0 minutes"
 
@@ -45,7 +47,9 @@ def format_seconds_to_duration(seconds: int) -> str:
 
 
 def format_last_login(last_login_str: str) -> str:
-    """Format last login time to relative time."""
+    """
+    Format last login time to relative time.
+    """
     try:
         last_login = datetime.fromisoformat(last_login_str.replace("Z", "+00:00"))
         now = datetime.now(last_login.tzinfo)
@@ -59,13 +63,14 @@ def format_last_login(last_login_str: str) -> str:
             return f"{diff.seconds // 60} minutes ago"
         else:
             return "Just now"
-    except:
+    except Exception:
         return last_login_str
 
 
 def create_chart_data(active_users: list) -> dict:
-    """Create chart data from active users."""
-    # Transcription time distribution
+    """
+    Create chart data from active users.
+    """
     transcription_data = []
     for user in active_users:
         seconds = int(user.get("transcribed_seconds", 0))
@@ -77,11 +82,8 @@ def create_chart_data(active_users: list) -> dict:
             }
         )
 
-    # Admin vs Regular users
     admin_count = sum(1 for user in active_users if user.get("admin", False))
     regular_count = len(active_users) - admin_count
-
-    # Recent activity (last 7 days)
     recent_activity = []
     now = datetime.now()
 
@@ -132,14 +134,11 @@ def create() -> None:
             active_users = result.get("active_users", [])
             total_transcribed_seconds = result.get("total_transcribed_seconds", 0)
 
-            # Key Metrics Cards
             with ui.row().classes("w-full gap-6 mb-8"):
-                # Total Users Card
                 with ui.card().classes("metric-card flex-1"):
                     ui.html(f'<div class="metric-value">{total_users}</div>')
                     ui.html('<div class="metric-label">Total Users</div>')
 
-                # Total Transcription Time Card
                 with ui.card().classes("metric-card flex-1"):
                     ui.html(
                         f'<div class="metric-value">{format_seconds_to_duration(total_transcribed_seconds)}</div>'
@@ -173,7 +172,6 @@ def create() -> None:
                 },
             ]
 
-            # Format data for table
             table_data = []
             for user in active_users:
                 table_data.append(
@@ -195,7 +193,6 @@ def create() -> None:
             )
 
         except Exception as e:
-            # Error handling with nice styling
             with ui.column().classes("w-full items-center justify-center min-h-96"):
                 ui.html('<div class="text-6xl mb-4">⚠️</div>')
                 ui.html(

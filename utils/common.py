@@ -6,8 +6,6 @@ from nicegui import ui
 from typing import Optional
 from utils.settings import get_settings
 from utils.token import get_auth_header
-from utils.token import get_user_info
-from utils.token import get_user_data
 from utils.token import token_refresh
 from utils.token import get_admin_status
 from starlette.formparsers import MultiPartParser

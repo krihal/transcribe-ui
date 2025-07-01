@@ -119,5 +119,7 @@ def get_admin_status() -> bool:
     """
     Check if the user is an admin based on the token.
     """
-
-    return get_user_data()
+    try:
+        return get_user_data()["user"]["is_admin"]
+    except (KeyError, TypeError):
+        return False
