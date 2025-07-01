@@ -3,6 +3,7 @@ from nicegui import ui
 from typing import Any
 from typing import Dict
 from typing import List
+import re
 
 
 class TranscriptSegment:
@@ -35,6 +36,13 @@ class TranscriptEditor:
         self.video_player = None
         self.autoscroll = False
         self.selected_segment: TranscriptSegment = None
+
+        # Search functionality attributes
+        self.search_term = ""
+        self.case_sensitive = False
+        self.search_results = []
+        self.current_search_index = -1
+        self.search_info_label = None
 
     async def select_segment_from_video(self, autoscroll: bool) -> None:
         if not autoscroll:
@@ -164,6 +172,127 @@ class TranscriptEditor:
             self.container.clear()
             with self.container:
                 self._render_segments()
+
+    # Search functionality methods
+    def search_captions(self, search_term: str) -> None:
+        """Search for text in captions and highlight results."""
+        self.search_term = search_term.strip()
+        self.search_results = []
+        self.current_search_index = -1
+
+        # Clear previous highlights
+        for segment in self.segments:
+            segment.is_highlighted = False
+
+        if not self.search_term:
+            self._update_search_info()
+            self.refresh_ui()
+            return
+
+        # Perform search
+        search_pattern = self.search_term
+        if not self.case_sensitive:
+            search_pattern = search_pattern.lower()
+
+        for i, segment in enumerate(self.segments):
+            text_to_search = segment.text
+            if not self.case_sensitive:
+                text_to_search = text_to_search.lower()
+
+            if search_pattern in text_to_search:
+                self.search_results.append(i)
+                segment.is_highlighted = True
+
+        # Navigate to first result if any found
+        if self.search_results:
+            self.current_search_index = 0
+            self._scroll_to_current_result()
+
+        self._update_search_info()
+        self.refresh_ui()
+
+    def navigate_search_results(self, direction: int) -> None:
+        """Navigate through search results."""
+        if not self.search_results:
+            return
+
+        self.current_search_index = (self.current_search_index + direction) % len(
+            self.search_results
+        )
+        self._scroll_to_current_result()
+        self._update_search_info()
+
+    def _scroll_to_current_result(self) -> None:
+        """Scroll to and select the current search result."""
+        if self.search_results and 0 <= self.current_search_index < len(
+            self.search_results
+        ):
+            segment_index = self.search_results[self.current_search_index]
+            segment = self.segments[segment_index]
+            self.select_segment(segment, None)
+
+    def _update_search_info(self) -> None:
+        """Update the search information label."""
+        if self.search_info_label:
+            if not self.search_term:
+                self.search_info_label.text = ""
+            elif not self.search_results:
+                self.search_info_label.text = "No results found"
+            else:
+                current = self.current_search_index + 1
+                total = len(self.search_results)
+                self.search_info_label.text = f"{current} of {total} results"
+
+    def replace_in_current_caption(self, replacement: str) -> None:
+        """Replace the search term in the currently selected caption."""
+        if not self.search_term or not self.selected_segment:
+            ui.notify("No search term or selected segment", type="warning")
+            return
+
+        segment = self.selected_segment
+        flags = re.IGNORECASE if not self.case_sensitive else 0
+
+        # Check if the selected segment contains the search term
+        if re.search(re.escape(self.search_term), segment.text, flags):
+            # Perform replacement
+            new_text = re.sub(
+                re.escape(self.search_term), replacement, segment.text, flags=flags
+            )
+
+            # Update the segment
+            segment_index = self.segments.index(segment)
+            self.update_segment(segment_index, text=new_text)
+
+            # Refresh search results
+            self.search_captions(self.search_term)
+
+            ui.notify("Replacement completed", type="positive")
+        else:
+            ui.notify("Search term not found in selected segment", type="warning")
+
+    def replace_all(self, replacement: str) -> None:
+        """Replace all occurrences of the search term."""
+        if not self.search_term:
+            ui.notify("No search term specified", type="warning")
+            return
+
+        replacement_count = 0
+        flags = re.IGNORECASE if not self.case_sensitive else 0
+
+        for i, segment in enumerate(self.segments):
+            if re.search(re.escape(self.search_term), segment.text, flags):
+                new_text = re.sub(
+                    re.escape(self.search_term), replacement, segment.text, flags=flags
+                )
+                self.update_segment(i, text=new_text)
+                replacement_count += 1
+
+        if replacement_count > 0:
+            # Refresh search results
+            self.search_captions(self.search_term)
+            ui.notify(f"Replaced {replacement_count} occurrences", type="positive")
+        else:
+            ui.notify("No occurrences found to replace", type="warning")
 
     def _create_segment_ui(self, segment: TranscriptSegment, index: int):
         segment_class = "cursor-pointer border-0 transition-all duration-200 w-full"
@@ -372,3 +501,67 @@ class TranscriptEditor:
                     ),
                 )
         dialog.open()
+
+    def create_search_panel(self) -> None:
+        """
+        Create the search panel UI.
+        """
+
+        with ui.expansion("Search & Replace").classes("w-full").style(
+            "background-color: #eff4fb;"
+        ):
+            with ui.row().classes("w-full gap-2 mb-2"):
+                search_input = (
+                    ui.input(
+                        placeholder="Search in captions...", value=self.search_term
+                    )
+                    .classes("flex-1")
+                    .props("outlined dense")
+                )
+
+                ui.button("Search", icon="search", color="primary").props("dense").on(
+                    "click", lambda: self.search_captions(search_input.value)
+                )
+
+                ui.checkbox("Case sensitive").bind_value_to(self, "case_sensitive").on(
+                    "update:model-value",
+                    lambda: self.search_captions(search_input.value)
+                    if self.search_term
+                    else None,
+                )
+
+            # Search navigation
+            with ui.row().classes("w-full gap-2 mb-2"):
+                ui.button("Previous", icon="keyboard_arrow_up", color="grey").props(
+                    "dense flat"
+                ).on("click", lambda: self.navigate_search_results(-1))
+                ui.button("Next", icon="keyboard_arrow_down", color="grey").props(
+                    "dense flat"
+                ).on("click", lambda: self.navigate_search_results(1))
+
+                self.search_info_label = ui.label("").classes(
+                    "text-sm text-gray-600 self-center"
+                )
+
+            # Replace functionality
+            with ui.row().classes("w-full gap-2"):
+                replace_input = (
+                    ui.input(
+                        placeholder="Replace with...",
+                    )
+                    .classes("flex-1")
+                    .props("outlined dense")
+                )
+
+                ui.button("Replace Current", color="orange").props("dense").on(
+                    "click",
+                    lambda: self.replace_in_current_caption(replace_input.value),
+                )
+                ui.button("Replace All", color="red").props("dense").on(
+                    "click", lambda: self.replace_all(replace_input.value)
+                )
+
+            # Enter key support for search
+            search_input.on(
+                "keydown.enter", lambda: self.search_captions(search_input.value)
+            )

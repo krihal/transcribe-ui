@@ -133,7 +133,6 @@ def jobs_get() -> list:
         if job["status"] == "in_progress":
             job["status"] = "transcribing"
 
-        # Conert job["deletion_date"] to a more readable format
         deletion_date = job["deletion_date"]
 
         if deletion_date:
@@ -175,42 +174,9 @@ def table_click(event) -> None:
     if status != "completed":
         return
 
-    # Dialog to pick which format to open, TXT or SRT
-    with ui.dialog() as dialog:
-        with ui.card().style(
-            "background-color: white; align-self: center; border: 0; width: 100%;"
-        ):
-            # Information about the transcription
-            ui.label(f"Transcription for {filename}").classes(
-                "text-h6 q-mb-md text-primary"
-            )
-            ui.label(f"UUID: {uuid}")
-            ui.label(f"Model: {model_type}")
-            ui.label(f"Language: {language}")
-            ui.label("Status: Completed")
-            ui.label("Select the format to edit the transcription.").classes(
-                "text-subtitle2 q-mb-md"
-            )
-            with ui.row().classes("justify-end"):
-                ui.button(
-                    "TXT",
-                    icon="text_fields",
-                    on_click=lambda: ui.navigate.to(
-                        f"/txt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
-                    ),
-                ).props("color=primary")
-                ui.button(
-                    "SRT",
-                    icon="subtitles",
-                    on_click=lambda: ui.navigate.to(
-                        f"/srt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
-                    ),
-                ).props("color=primary")
-                ui.button(
-                    "Close",
-                    icon="cancel",
-                ).on("click", lambda: dialog.close())
-        dialog.open()
+    ui.navigate.to(
+        f"/txt?uuid={uuid}&filename={filename}&model={model_type}&language={language}"
+    )
 
 
 def post_file(file: str, filename: str) -> None:

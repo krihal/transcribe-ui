@@ -6,12 +6,31 @@ from utils.common import get_auth_header
 from utils.common import page_init
 from utils.video import create_video_proxy
 from utils.transcript import TranscriptEditor
+from utils.srt import SRTEditor
 
 create_video_proxy()
 
 
 def export_file(data: str, filename: str) -> None:
     ui.download.content(data, filename)
+
+
+def save_srt(job_id: str, data: str, editor: SRTEditor) -> None:
+    jsondata = {"format": "srt", "data": data}
+    headers = get_auth_header()
+    headers["Content-Type"] = "application/json"
+    requests.put(
+        f"{API_URL}/api/v1/transcriber/{job_id}/result",
+        headers=headers,
+        json=jsondata,
+    )
+
+    ui.notify(
+        "File saved successfully",
+        type="positive",
+        position="bottom",
+        icon="check_circle",
+    )
 
 
 def save_file(job_id: str, data: str) -> None:
@@ -42,13 +61,24 @@ def create() -> None:
                 f"{API_URL}/api/v1/transcriber/{uuid}/result/txt",
                 headers=get_auth_header(),
             )
+            response_srt = requests.get(
+                f"{API_URL}/api/v1/transcriber/{uuid}/result/srt",
+                headers=get_auth_header(),
+            )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             ui.notify(f"Error: Failed to get result: {e}", type="negative")
             return
 
         data = response.json()
+        data_srt = response_srt.json()
         editor = TranscriptEditor(data["result"])
+        editor_srt = SRTEditor()
+
+        async def select_from_video(autoscroll: bool) -> None:
+            if autoscroll:
+                await editor_srt.select_caption_from_video(autoscroll)
+                await editor.select_segment_from_video(autoscroll)
 
         ui.add_css(".q-editor__toolbar { display: none }")
 
@@ -68,8 +98,24 @@ def create() -> None:
 
         with ui.splitter(value=60).classes("w-full h-screen") as splitter:
             with splitter.before:
-                with ui.scroll_area().style("height: calc(100vh - 200px);"):
-                    editor.render()
+                with ui.tabs().classes("w-full") as tabs:
+                    srt = ui.tab("SRT")
+                    transcript = ui.tab("Transcript")
+
+                with ui.tab_panels(tabs, value=srt).classes("w-full h-full"):
+                    with ui.tab_panel(srt).classes("w-full h-full"):
+                        editor_srt = SRTEditor()
+                        editor_srt.create_search_panel()
+                        with ui.scroll_area().style("height: calc(100vh - 200px);"):
+                            editor_srt.main_container = ui.column().classes(
+                                "w-full h-full"
+                            )
+                        editor_srt.parse_srt(data_srt["result"])
+                        editor_srt.refresh_display()
+                    with ui.tab_panel(transcript).classes("w-full h-full"):
+                        editor.create_search_panel()
+                        with ui.scroll_area().style("height: calc(100vh - 200px);"):
+                            editor.render()
 
             with splitter.after:
                 with ui.card().classes("w-full h-full"):
@@ -83,9 +129,10 @@ def create() -> None:
                     ).classes("w-full")
 
                     editor.set_video_player(video)
+                    editor_srt.set_video_player(video)
                     video.on(
                         "timeupdate",
-                        lambda: editor.select_segment_from_video(autoscroll.value),
+                        lambda: select_from_video(autoscroll.value),
                     )
 
                     video.style("align-self: flex-start;")
