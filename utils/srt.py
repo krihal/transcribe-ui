@@ -172,6 +172,23 @@ class SRTEditor:
 
         return vtt_content
 
+    def export(self, srt_format: str, filename: str):
+        """
+        Export subtitles in the specified format.
+        """
+        filename = filename.rsplit(".", 1)[0]
+
+        match srt_format:
+            case "srt":
+                srt_content = self.export_srt()
+            case "vtt":
+                srt_content = self.export_vtt()
+            case _:
+                ui.notify("Unsupported format", type="negative")
+
+        ui.download(srt_content.encode(), filename=f"{filename}.{srt_format}")
+        ui.notify("File exported successfully", type="positive")
+
     def renumber_captions(self) -> None:
         """
         Renumber all captions sequentially.

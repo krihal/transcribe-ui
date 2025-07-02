@@ -82,20 +82,6 @@ def create() -> None:
 
         ui.add_css(".q-editor__toolbar { display: none }")
 
-        with ui.row().classes("justify-between items-center mb-4"):
-            with ui.button_group().props("outline"):
-                ui.button("Save", icon="save").style("width: 150px;").on_click(
-                    lambda: save_file(uuid, editor.get_json_data())
-                )
-                ui.button("Export", icon="share").style("width: 150px;").on_click(
-                    lambda: export_file(
-                        editor.get_export_data(),
-                        f"{filename}.txt",
-                    )
-                )
-
-        ui.separator()
-
         with ui.splitter(value=60).classes("w-full h-screen") as splitter:
             with splitter.before:
                 with ui.tabs().classes("w-full") as tabs:
@@ -104,7 +90,38 @@ def create() -> None:
 
                 with ui.tab_panels(tabs, value=srt).classes("w-full h-full"):
                     with ui.tab_panel(srt).classes("w-full h-full"):
-                        editor_srt = SRTEditor()
+                        with ui.row().classes("justify-between items-center mb-4"):
+                            with ui.button("Save", icon="save").style(
+                                "width: 150px;"
+                            ).props("color=primary flat") as save:
+                                save.on_click(
+                                    lambda: save_file(uuid, editor.get_json_data())
+                                )
+
+                            with ui.dropdown_button("Export", icon="share").props(
+                                "color=primary flat"
+                            ):
+                                export_button_srt = ui.button(
+                                    "Export as SRT", icon="share"
+                                ).style("width: 150px;")
+                                export_button_srt.props("color=primary flat")
+                                export_button_srt.on(
+                                    "click", lambda: editor_srt.export("srt", filename)
+                                )
+
+                                export_button_vtt = ui.button(
+                                    "Export as VTT", icon="share"
+                                ).style("width: 150px;")
+                                export_button_vtt.props("color=primary flat")
+                                export_button_vtt.on(
+                                    "click", lambda: editor_srt.export("vtt", filename)
+                                )
+
+                            validate = ui.button("Validate", icon="check").props(
+                                "color=primary flat"
+                            )
+                            validate.on("click", lambda: editor_srt.validate_captions())
+
                         editor_srt.create_search_panel()
                         with ui.scroll_area().style("height: calc(100vh - 200px);"):
                             editor_srt.main_container = ui.column().classes(
@@ -112,7 +129,35 @@ def create() -> None:
                             )
                         editor_srt.parse_srt(data_srt["result"])
                         editor_srt.refresh_display()
+
                     with ui.tab_panel(transcript).classes("w-full h-full"):
+                        with ui.row().classes("justify-between items-center mb-4"):
+                            with ui.button("Save", icon="save").style(
+                                "width: 150px;"
+                            ).props("color=primary flat") as save:
+                                save.on_click(
+                                    lambda: save_file(uuid, editor.get_json_data())
+                                )
+
+                            with ui.dropdown_button("Export", icon="share").props(
+                                "color=primary flat"
+                            ):
+                                export_button_txt = ui.button(
+                                    "Export as TXT", icon="share"
+                                ).style("width: 150px;")
+                                export_button_txt.props("color=primary flat")
+                                export_button_txt.on(
+                                    "click", lambda: editor.export("txt", filename)
+                                )
+
+                                export_button_json = ui.button(
+                                    "Export as JSON", icon="share"
+                                ).style("width: 150px;")
+                                export_button_json.props("color=primary flat")
+                                export_button_json.on(
+                                    "click", lambda: editor.export("json", filename)
+                                )
+
                         editor.create_search_panel()
                         with ui.scroll_area().style("height: calc(100vh - 200px);"):
                             editor.render()

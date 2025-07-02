@@ -565,3 +565,21 @@ class TranscriptEditor:
             search_input.on(
                 "keydown.enter", lambda: self.search_captions(search_input.value)
             )
+
+    def export(self, txt_format: str, filename: str):
+        """
+        Export the transcript in the specified format.
+        """
+        filename = filename.rsplit(".", 1)[0]
+
+        match txt_format:
+            case "txt":
+                content = self.get_export_data()
+            case "json":
+                content = json.dumps(self.get_json_data(), indent=4, ensure_ascii=False)
+            case _:
+                ui.notify(f"Unsupported format: {txt_format}", type="negative")
+                return
+
+        ui.download(content.encode(), filename=f"{filename}.{txt_format}")
+        ui.notify("File exported successfully", type="positive")
