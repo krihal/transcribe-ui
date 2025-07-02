@@ -436,6 +436,25 @@ class SRTEditor:
         self.refresh_display()
         self.update_words_per_minute()
 
+    def merge_caption_after(self, caption: SRTCaption) -> None:
+        """
+        Merge the selected caption with the next one.
+        """
+
+        caption_index = self.captions.index(caption)
+
+        if caption_index < len(self.captions) - 1:
+            next_caption = self.captions[caption_index + 1]
+            caption.text += "\n" + next_caption.text
+            caption.end_time = next_caption.end_time
+
+            self.captions.remove(next_caption)
+            self.renumber_captions()
+            self.refresh_display()
+            self.update_words_per_minute()
+        else:
+            ui.notify("Cannot merge the last caption", type="warning")
+
     def remove_caption(self, caption: SRTCaption) -> None:
         """
         Remove a caption.
@@ -643,12 +662,15 @@ class SRTEditor:
 
                 # Action buttons
                 with ui.row().classes("w-full gap-2 mt-3"):
-                    ui.button("Split", icon="call_split", color="blue").props(
-                        "flat dense"
-                    ).on("click", lambda: self.split_caption(caption))
-                    ui.button("Add After", icon="add", color="green").props(
-                        "flat dense"
-                    ).on("click", lambda: self.add_caption_after(caption))
+                    ui.button("Split", icon="call_split").props("flat dense").on(
+                        "click", lambda: self.split_caption(caption)
+                    )
+                    ui.button("Merge", icon="merge").props("flat dense").on(
+                        "click", lambda: self.merge_caption_after(caption)
+                    )
+                    ui.button("Add", icon="add", color="green").props("flat dense").on(
+                        "click", lambda: self.add_caption_after(caption)
+                    )
                     ui.button("Remove", icon="delete", color="red").props(
                         "flat dense"
                     ).on("click", lambda: self.remove_caption(caption))
