@@ -11,19 +11,26 @@ from utils.srt import SRTEditor
 create_video_proxy()
 
 
-def export_file(data: str, filename: str) -> None:
-    ui.download.content(data, filename)
-
-
 def save_srt(job_id: str, data: str, editor: SRTEditor) -> None:
+    """
+    Save the SRT file to the server.
+    """
+
     jsondata = {"format": "srt", "data": data}
+
     headers = get_auth_header()
     headers["Content-Type"] = "application/json"
-    requests.put(
-        f"{API_URL}/api/v1/transcriber/{job_id}/result",
-        headers=headers,
-        json=jsondata,
-    )
+
+    try:
+        res = requests.put(
+            f"{API_URL}/api/v1/transcriber/{job_id}/result",
+            headers=headers,
+            json=jsondata,
+        )
+        res.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        ui.notify(f"Error: Failed to save file: {e}", type="negative")
+        return
 
     ui.notify(
         "File saved successfully",
@@ -34,14 +41,25 @@ def save_srt(job_id: str, data: str, editor: SRTEditor) -> None:
 
 
 def save_file(job_id: str, data: str) -> None:
+    """
+    Save the transcription result file to the server.
+    """
+
     data["format"] = "json"
+
     headers = get_auth_header()
     headers["Content-Type"] = "application/json"
-    requests.put(
-        f"{API_URL}/api/v1/transcriber/{job_id}/result",
-        headers=headers,
-        json=data,
-    )
+
+    try:
+        res = requests.put(
+            f"{API_URL}/api/v1/transcriber/{job_id}/result",
+            headers=headers,
+            json=data,
+        )
+        res.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        ui.notify(f"Error: Failed to save file: {e}", type="negative")
+        return
 
     ui.notify(
         "File saved successfully",
